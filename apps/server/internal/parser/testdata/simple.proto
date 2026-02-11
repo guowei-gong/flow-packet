@@ -1,0 +1,20 @@
+syntax = "proto3";
+package game;
+
+message LoginRequest {
+  string username = 1;
+  string password = 2;
+  int32 platform = 3;
+}
+
+message LoginResponse {
+  int32 code = 1;
+  string token = 2;
+  UserInfo user = 3;
+}
+
+message UserInfo {
+  int64 uid = 1;
+  string nickname = 2;
+  int32 level = 3;
+}

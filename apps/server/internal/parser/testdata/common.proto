@@ -1,0 +1,15 @@
+syntax = "proto3";
+package common;
+
+enum ErrorCode {
+  OK = 0;
+  INVALID_PARAM = 1;
+  NOT_FOUND = 2;
+  INTERNAL_ERROR = 3;
+}
+
+message Pagination {
+  int32 page = 1;
+  int32 page_size = 2;
+  int32 total = 3;
+}

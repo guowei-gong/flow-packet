@@ -1,0 +1,69 @@
+syntax = "proto3";
+
+package game;
+
+// 登录请求
+message LoginRequest {
+  string username = 1;
+  string password = 2;
+  string device_id = 3;
+  int32 platform = 4;  // 1=iOS, 2=Android, 3=PC
+}
+
+// 登录响应
+message LoginResponse {
+  int32 code = 1;       // 0=成功
+  string message = 2;
+  int64 user_id = 3;
+  string token = 4;
+  UserInfo user = 5;
+}
+
+// 用户信息
+message UserInfo {
+  int64 id = 1;
+  string nickname = 2;
+  int32 level = 3;
+  int64 exp = 4;
+  int32 vip_level = 5;
+}
+
+// 获取角色信息请求
+message GetPlayerRequest {
+  int64 user_id = 1;
+}
+
+// 获取角色信息响应
+message GetPlayerResponse {
+  int32 code = 1;
+  PlayerInfo player = 2;
+}
+
+// 角色信息
+message PlayerInfo {
+  int64 id = 1;
+  string name = 2;
+  int32 level = 3;
+  int64 hp = 4;
+  int64 mp = 5;
+  int64 attack = 6;
+  int64 defense = 7;
+  repeated Item items = 8;
+}
+
+// 物品
+message Item {
+  int32 item_id = 1;
+  string name = 2;
+  int32 count = 3;
+  ItemType type = 4;
+}
+
+// 物品类型
+enum ItemType {
+  ITEM_TYPE_UNKNOWN = 0;
+  ITEM_TYPE_WEAPON = 1;
+  ITEM_TYPE_ARMOR = 2;
+  ITEM_TYPE_CONSUMABLE = 3;
+  ITEM_TYPE_MATERIAL = 4;
+}

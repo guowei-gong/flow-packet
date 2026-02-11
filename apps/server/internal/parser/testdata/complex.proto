@@ -1,0 +1,23 @@
+syntax = "proto3";
+package game;
+
+import "common.proto";
+
+message Item {
+  int32 id = 1;
+  string name = 2;
+  int32 count = 3;
+}
+
+message BattleRequest {
+  int64 target_uid = 1;
+  repeated Item items = 2;
+  common.ErrorCode expected_code = 3;
+  map<string, int32> attributes = 4;
+  oneof strategy {
+    int32 attack_mode = 5;
+    string skill_name = 6;
+  }
+  optional bool auto_battle = 7;
+  common.Pagination pagination = 8;
+}
