@@ -1,15 +1,10 @@
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarHeader,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarRail,
-} from '@/components/ui/sidebar'
 import { Plug, FileCode, Route, LayoutDashboard } from 'lucide-react'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 
 const navItems = [
   { icon: LayoutDashboard, label: '画布' },
@@ -20,29 +15,21 @@ const navItems = [
 
 export function AppSidebar() {
   return (
-    <Sidebar collapsible="icon" className="border-r">
-      <SidebarHeader className="h-10 flex items-center justify-center border-b border-border">
-        <span className="text-xs font-bold truncate group-data-[collapsible=icon]:hidden">
-          FP
-        </span>
-      </SidebarHeader>
-      <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {navItems.map((item) => (
-                <SidebarMenuItem key={item.label}>
-                  <SidebarMenuButton tooltip={item.label}>
-                    <item.icon className="size-4" />
-                    <span>{item.label}</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-      </SidebarContent>
-      <SidebarRail />
-    </Sidebar>
+    <TooltipProvider delayDuration={0}>
+      <nav className="flex flex-col items-center w-12 shrink-0 border-r border-border bg-sidebar py-2 gap-1">
+        {navItems.map((item) => (
+          <Tooltip key={item.label}>
+            <TooltipTrigger asChild>
+              <button className="flex items-center justify-center size-9 rounded-md text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground">
+                <item.icon className="size-4.5" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right">
+              {item.label}
+            </TooltipContent>
+          </Tooltip>
+        ))}
+      </nav>
+    </TooltipProvider>
   )
 }

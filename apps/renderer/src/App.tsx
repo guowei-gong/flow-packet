@@ -1,7 +1,6 @@
 import { useEffect } from 'react'
 import { ReactFlowProvider } from '@xyflow/react'
 import { SidebarProvider } from '@/components/ui/sidebar'
-import { cn } from '@/lib/utils'
 import { AppSidebar } from '@/components/layout/AppSidebar'
 import { MainLayout } from '@/components/layout/MainLayout'
 import { Toolbar } from '@/components/layout/Toolbar'
@@ -45,37 +44,38 @@ function App() {
 
   return (
     <ReactFlowProvider>
-      <SidebarProvider defaultOpen={false}>
-        <AppSidebar />
-        <div
-          className={cn(
-            'ml-auto w-full max-w-full',
-            'peer-data-[state=collapsed]:w-[calc(100%-var(--sidebar-width-icon))]',
-            'peer-data-[state=expanded]:w-[calc(100%-var(--sidebar-width))]',
-            'transition-[width] duration-200 ease-linear',
-            'flex h-svh flex-col'
-          )}
-        >
-          <MainLayout
-            toolbar={<Toolbar />}
-            left={
-              <div className="flex flex-col h-full overflow-hidden">
-                <div className="flex-1 min-h-0 overflow-auto">
-                  <ProtoBrowser />
-                </div>
-                <div className="shrink-0 max-h-[40%] overflow-auto border-t border-border">
-                  <div className="flex items-center px-3 h-7 shrink-0 border-b border-border">
-                    <span className="text-xs font-medium text-muted-foreground">
-                      Route 映射
-                    </span>
+      <SidebarProvider open={false} onOpenChange={() => {}}>
+        <div className="flex h-svh flex-col w-full">
+          {/* 顶部工具栏 - 全宽最高层级 */}
+          <div className="flex items-center h-10 px-3 shrink-0 border-b border-border bg-background">
+            <Toolbar />
+          </div>
+
+          {/* 下方区域：导航栏 + 内容 */}
+          <div className="flex flex-1 min-h-0">
+            <AppSidebar />
+            <div className="flex-1 min-w-0">
+              <MainLayout
+                left={
+                  <div className="flex flex-col h-full overflow-hidden">
+                    <div className="flex-1 min-h-0 overflow-auto">
+                      <ProtoBrowser />
+                    </div>
+                    <div className="shrink-0 max-h-[40%] overflow-auto border-t border-border">
+                      <div className="flex items-center px-3 h-7 shrink-0 border-b border-border">
+                        <span className="text-xs font-medium text-muted-foreground">
+                          Route 映射
+                        </span>
+                      </div>
+                      <RouteMapping />
+                    </div>
                   </div>
-                  <RouteMapping />
-                </div>
-              </div>
-            }
-            center={<FlowCanvas />}
-            bottom={<LogPanel />}
-          />
+                }
+                center={<FlowCanvas />}
+                bottom={<LogPanel />}
+              />
+            </div>
+          </div>
         </div>
         <PropertySheet />
       </SidebarProvider>
