@@ -1,4 +1,4 @@
-import { ChevronRight, Folder, Box } from 'lucide-react'
+import { ChevronRight, File, Box } from 'lucide-react'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import {
   Collapsible,
@@ -64,7 +64,7 @@ function FileNode({ file }: { file: FileInfo }) {
         <CollapsibleTrigger asChild>
           <SidebarMenuButton>
             <ChevronRight className="transition-transform" />
-            <Folder />
+            <File />
             {file.Path}
           </SidebarMenuButton>
         </CollapsibleTrigger>

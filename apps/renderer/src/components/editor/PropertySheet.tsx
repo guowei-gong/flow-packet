@@ -9,14 +9,14 @@ import {
 } from '@/components/ui/sheet'
 
 export function PropertySheet() {
-  const selectedNodeId = useCanvasStore((s) => s.selectedNodeId)
-  const setSelectedNodeId = useCanvasStore((s) => s.setSelectedNodeId)
+  const editingNodeId = useCanvasStore((s) => s.editingNodeId)
+  const setEditingNodeId = useCanvasStore((s) => s.setEditingNodeId)
 
   return (
     <Sheet
-      open={!!selectedNodeId}
+      open={!!editingNodeId}
       onOpenChange={(open) => {
-        if (!open) setSelectedNodeId(null)
+        if (!open) setEditingNodeId(null)
       }}
     >
       <SheetContent side="right" className="w-[400px] sm:max-w-[400px] overflow-auto">
@@ -27,7 +27,7 @@ export function PropertySheet() {
           </SheetDescription>
         </SheetHeader>
         <div className="px-4 pb-4">
-          {selectedNodeId && <FieldEditor nodeId={selectedNodeId} />}
+          {editingNodeId && <FieldEditor nodeId={editingNodeId} />}
         </div>
       </SheetContent>
     </Sheet>

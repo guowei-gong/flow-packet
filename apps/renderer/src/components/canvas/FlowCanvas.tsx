@@ -3,6 +3,7 @@ import {
   ReactFlow,
   Background,
   BackgroundVariant,
+  MiniMap,
   type OnNodesChange,
   type OnEdgesChange,
   type OnConnect,
@@ -12,12 +13,14 @@ import {
   applyNodeChanges,
   applyEdgeChanges,
   addEdge,
+  type ReactFlowInstance,
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import { useCanvasStore, type RequestNodeData } from '@/stores/canvasStore'
 import { useProtoStore, type MessageInfo } from '@/stores/protoStore'
 import { RequestNode } from './nodes/RequestNode'
 import { ExecEdge } from './edges/ExecEdge'
+import { CanvasControls } from './CanvasControls'
 import type { Node } from '@xyflow/react'
 
 const nodeTypes: NodeTypes = {
@@ -38,6 +41,7 @@ export function FlowCanvas() {
   const removeNode = useCanvasStore((s) => s.removeNode)
   const routeMappings = useProtoStore((s) => s.routeMappings)
   const reactFlowWrapper = useRef<HTMLDivElement>(null)
+  const reactFlowInstance = useRef<ReactFlowInstance | null>(null)
 
   const onNodesChange: OnNodesChange = useCallback(
     (changes) => {
@@ -75,9 +79,23 @@ export function FlowCanvas() {
     [setSelectedNodeId]
   )
 
+  const onNodeDoubleClick = useCallback(
+    (_: React.MouseEvent, node: Node) => {
+      useCanvasStore.getState().setEditingNodeId(node.id)
+    },
+    []
+  )
+
   const onPaneClick = useCallback(() => {
     setSelectedNodeId(null)
+    useCanvasStore.getState().setEditingNodeId(null)
   }, [setSelectedNodeId])
+
+  const onNodeDragStop = useCallback(() => {
+    setSelectedNodeId(null)
+    // 同时清除 ReactFlow 内部的 selected 状态
+    updateNodes((nds) => nds.map((n) => ({ ...n, selected: false })))
+  }, [setSelectedNodeId, updateNodes])
 
   const onKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -113,17 +131,18 @@ export function FlowCanvas() {
       // 查找 route 映射（允许无映射时也能拖入画布）
       const mapping = routeMappings.find((m) => m.requestMsg === message.Name)
 
-      const wrapper = reactFlowWrapper.current
-      if (!wrapper) return
-      const bounds = wrapper.getBoundingClientRect()
+      const instance = reactFlowInstance.current
+      if (!instance) return
+
+      const position = instance.screenToFlowPosition({
+        x: e.clientX,
+        y: e.clientY,
+      })
 
       const newNode: Node<RequestNodeData> = {
         id: `node_${Date.now()}`,
         type: 'requestNode',
-        position: {
-          x: e.clientX - bounds.left - 100,
-          y: e.clientY - bounds.top - 20,
-        },
+        position,
         data: {
           messageName: message.Name,
           route: mapping?.route ?? 0,
@@ -148,12 +167,16 @@ export function FlowCanvas() {
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
+        onInit={(instance) => { reactFlowInstance.current = instance }}
         onNodeClick={onNodeClick}
+        onNodeDoubleClick={onNodeDoubleClick}
+        onNodeDragStop={onNodeDragStop}
         onPaneClick={onPaneClick}
         onDragOver={onDragOver}
         onDrop={onDrop}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
+        colorMode="dark"
         fitView
         minZoom={0.25}
         maxZoom={2.0}
@@ -161,10 +184,17 @@ export function FlowCanvas() {
       >
         <Background
           variant={BackgroundVariant.Dots}
-          gap={20}
-          size={1}
-          color="hsl(var(--border))"
+          color="#62748e"
         />
+        <MiniMap
+          nodeStrokeWidth={4}
+          maskStrokeColor="#FFFFFF1A"
+          maskColor="#21262d77"
+          maskStrokeWidth={1}
+          nodeClassName="!fill-muted-foreground/20"
+          className="!bg-background border rounded-lg overflow-hidden"
+        />
+        <CanvasControls />
       </ReactFlow>
     </div>
   )

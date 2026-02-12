@@ -182,6 +182,26 @@ html, body, #root {
   cursor: default !important;
 }
 
+/* 节点选中平滑过渡 */
+.react-flow__node.selected {
+  transition: box-shadow 0.3s ease;
+}
+
+/* 节点 running 脉冲动画 */
+@keyframes node-pulse {
+  0%, 100% { box-shadow: 0 0 0 1px var(--status-warning); }
+  50% { box-shadow: 0 0 8px 2px var(--status-warning); }
+}
+
+.node-pulse {
+  animation: node-pulse 1.5s ease-in-out infinite;
+}
+
+/* 边 dash 流动动画 */
+@keyframes edge-dash {
+  to { stroke-dashoffset: -10; }
+}
+
 /* Scrollbar */
 ::-webkit-scrollbar {
   width: 4px;
