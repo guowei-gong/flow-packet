@@ -110,12 +110,8 @@ export function FlowCanvas() {
         return
       }
 
-      // 查找 route 映射
+      // 查找 route 映射（允许无映射时也能拖入画布）
       const mapping = routeMappings.find((m) => m.requestMsg === message.Name)
-      if (!mapping) {
-        alert(`请先为 ${message.Name} 配置 Route 映射`)
-        return
-      }
 
       const wrapper = reactFlowWrapper.current
       if (!wrapper) return
@@ -130,7 +126,7 @@ export function FlowCanvas() {
         },
         data: {
           messageName: message.Name,
-          route: mapping.route,
+          route: mapping?.route ?? 0,
           fields: {},
           responseFields: message.Fields?.map((f) => ({
             name: f.name,

@@ -1,6 +1,18 @@
-import { useState } from 'react'
-import { ChevronRight, ChevronDown, FileText, Box } from 'lucide-react'
+import { ChevronRight, Folder, Box } from 'lucide-react'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible'
+import {
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+} from '@/components/ui/sidebar'
 import { useProtoStore, type FileInfo, type MessageInfo } from '@/stores/protoStore'
 import { ProtoImport } from './ProtoImport'
 
@@ -9,9 +21,7 @@ export function ProtoBrowser() {
 
   return (
     <div className="flex flex-col h-full">
-      <div
-        className="flex items-center justify-between px-3 h-8 shrink-0 border-b border-border"
-      >
+      <div className="flex items-center justify-between px-3 h-8 shrink-0 border-b border-border">
         <span className="text-xs font-medium text-muted-foreground">
           协议浏览器
         </span>
@@ -22,73 +32,72 @@ export function ProtoBrowser() {
       </div>
 
       <ScrollArea className="flex-1">
-        <div className="px-1 pb-2">
-          {files.map((file) => (
-            <FileNode key={file.Path} file={file} />
-          ))}
-          {files.length === 0 && (
-            <div className="px-3 py-4 text-center">
-              <span className="text-xs text-muted-foreground">
-                尚未导入 Proto 文件
-              </span>
-            </div>
-          )}
-        </div>
+        <SidebarGroup>
+          <SidebarGroupLabel>Proto 文件</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {files.map((file) => (
+                <FileNode key={file.Path} file={file} />
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+        {files.length === 0 && (
+          <div className="px-3 py-4 text-center">
+            <span className="text-xs text-muted-foreground">
+              尚未导入 Proto 文件
+            </span>
+          </div>
+        )}
       </ScrollArea>
     </div>
   )
 }
 
 function FileNode({ file }: { file: FileInfo }) {
-  const [expanded, setExpanded] = useState(true)
-
   return (
-    <div>
-      <div
-        className="flex items-center gap-1 px-2 py-1 cursor-pointer rounded hover:bg-white/5"
-        onClick={() => setExpanded(!expanded)}
+    <SidebarMenuItem>
+      <Collapsible
+        defaultOpen
+        className="group/collapsible [&[data-state=open]>button>svg:first-child]:rotate-90"
       >
-        {expanded ? (
-          <ChevronDown className="w-3 h-3 shrink-0 text-muted-foreground" />
-        ) : (
-          <ChevronRight className="w-3 h-3 shrink-0 text-muted-foreground" />
-        )}
-        <FileText className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
-        <span className="text-xs truncate text-foreground">
-          {file.Path}
-        </span>
-        {file.Package && (
-          <span className="text-[10px] ml-auto shrink-0 text-muted-foreground">
-            {file.Package}
-          </span>
-        )}
-      </div>
-
-      {expanded && file.Messages?.map((msg) => (
-        <MessageNode key={msg.Name} message={msg} depth={1} />
-      ))}
-    </div>
+        <CollapsibleTrigger asChild>
+          <SidebarMenuButton>
+            <ChevronRight className="transition-transform" />
+            <Folder />
+            {file.Path}
+          </SidebarMenuButton>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <div
+            className="flex flex-col gap-1 border-l border-border py-0.5"
+            style={{ marginLeft: 28, paddingLeft: 16 }}
+          >
+            {file.Messages?.map((msg) => (
+              <MessageNode key={msg.Name} message={msg} />
+            ))}
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
+    </SidebarMenuItem>
   )
 }
 
-function MessageNode({ message, depth }: { message: MessageInfo; depth: number }) {
+function MessageNode({ message }: { message: MessageInfo }) {
   const handleDragStart = (e: React.DragEvent) => {
     e.dataTransfer.setData('application/flow-packet-message', JSON.stringify(message))
     e.dataTransfer.effectAllowed = 'copy'
   }
 
   return (
-    <div
-      className="flex items-center gap-1 px-2 py-0.5 cursor-grab rounded hover:bg-white/5"
-      style={{ paddingLeft: `${depth * 16 + 8}px` }}
+    <SidebarMenuButton
+      className="cursor-grab"
       draggable
       onDragStart={handleDragStart}
       title={message.Fields?.map((f) => `${f.name}: ${f.type}`).join('\n')}
     >
-      <Box className="w-3.5 h-3.5 shrink-0" style={{ color: '#1B6EF3' }} />
-      <span className="text-xs truncate text-foreground">
-        {message.ShortName}
-      </span>
-    </div>
+      <Box className="text-blue-500" />
+      {message.ShortName}
+    </SidebarMenuButton>
   )
 }
