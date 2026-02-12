@@ -20,14 +20,14 @@ export function ProtoBrowser() {
   const files = useProtoStore((s) => s.files)
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="flex items-center justify-between px-3 h-8 shrink-0 border-b border-border">
+    <div className="flex flex-col h-full" style={{ paddingLeft: 10 }}>
+      <div className="flex items-center justify-between px-2 h-8 shrink-0 border-b border-border">
         <span className="text-xs font-medium text-muted-foreground">
           协议浏览器
         </span>
       </div>
 
-      <div className="px-2 py-1.5">
+      <div style={{ padding: '12px 8px 6px' }}>
         <ProtoImport />
       </div>
 

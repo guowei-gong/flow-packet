@@ -16,7 +16,7 @@ const navItems = [
 export function AppSidebar() {
   return (
     <TooltipProvider delayDuration={0}>
-      <nav className="flex flex-col items-center w-12 shrink-0 border-r border-border bg-sidebar py-2 gap-1">
+      <nav className="flex flex-col items-center w-12 shrink-0 border-r border-border py-2 gap-1" style={{ background: 'var(--bg-activity)' }}>
         {navItems.map((item) => (
           <Tooltip key={item.label}>
             <TooltipTrigger asChild>

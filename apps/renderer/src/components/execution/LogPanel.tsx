@@ -20,7 +20,7 @@ export function LogPanel() {
 
   return (
     <ScrollArea className="h-full">
-      <div className="font-mono text-[11px] p-2 space-y-0.5">
+      <div className="font-mono text-[11px] space-y-0.5" style={{ padding: '8px 8px 8px 22px' }}>
         {logs.length === 0 && (
           <div className="text-muted-foreground">
             等待执行...

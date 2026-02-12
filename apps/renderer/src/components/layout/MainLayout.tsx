@@ -30,11 +30,11 @@ export function MainLayout({
         minSize={15}
         maxSize={showController ? 50 : 0}
         className={cn(
-          'transition-[flex-grow] duration-500 bg-card',
+          'transition-[flex-grow] duration-500',
           { 'min-w-[280px]': showController }
         )}
       >
-        <div className="h-full overflow-auto">
+        <div className="h-full overflow-auto" style={{ background: 'var(--bg-controller)' }}>
           {left}
         </div>
       </ResizablePanel>
@@ -50,20 +50,22 @@ export function MainLayout({
       {/* 右侧：画布 + 底部日志 */}
       <ResizablePanel defaultSize={82}>
         <div className="flex flex-col h-full">
-          <div className="flex-1 min-h-0 relative overflow-hidden bg-background">
+          <div className="flex-1 min-h-0 relative overflow-hidden" style={{ background: 'var(--bg-canvas)' }}>
             {center}
           </div>
 
           {/* 底部执行日志 */}
           <div
-            className="shrink-0 flex flex-col border-t border-border bg-background"
+            className="shrink-0 flex flex-col border-t border-border"
             style={{
+              background: 'var(--bg-panel)',
               height: bottomCollapsed ? 28 : 200,
               transition: 'height 0.15s ease',
             }}
           >
             <div
-              className="flex items-center justify-between px-3 h-7 shrink-0 cursor-pointer select-none border-b border-border"
+              className="flex items-center justify-between h-7 shrink-0 cursor-pointer select-none border-b border-border"
+              style={{ padding: '0 12px 0 22px' }}
               onClick={() => setBottomCollapsed(!bottomCollapsed)}
             >
               <span className="text-xs font-medium text-muted-foreground">

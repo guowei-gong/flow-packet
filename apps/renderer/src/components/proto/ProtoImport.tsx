@@ -36,9 +36,9 @@ export function ProtoImport() {
         onChange={handleUpload}
       />
       <Button
-        variant="ghost"
+        variant="default"
         size="sm"
-        className="w-full justify-start gap-2 h-7 text-xs"
+        className="w-full gap-2 h-7 text-xs"
         onClick={() => inputRef.current?.click()}
       >
         <Upload className="w-3.5 h-3.5" />

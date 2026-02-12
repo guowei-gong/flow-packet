@@ -47,7 +47,7 @@ function App() {
       <SidebarProvider open={false} onOpenChange={() => {}}>
         <div className="flex h-svh flex-col w-full">
           {/* 顶部工具栏 - 全宽最高层级 */}
-          <div className="flex items-center h-10 px-3 shrink-0 border-b border-border bg-background">
+          <div className="flex items-center h-10 px-3 shrink-0 border-b border-border" style={{ background: 'var(--bg-toolbar)' }}>
             <Toolbar />
           </div>
 
@@ -61,8 +61,8 @@ function App() {
                     <div className="flex-1 min-h-0 overflow-auto">
                       <ProtoBrowser />
                     </div>
-                    <div className="shrink-0 max-h-[40%] overflow-auto border-t border-border">
-                      <div className="flex items-center px-3 h-7 shrink-0 border-b border-border">
+                    <div className="shrink-0 max-h-[40%] overflow-auto border-t border-border" style={{ paddingLeft: 10 }}>
+                      <div className="flex items-center px-2 h-7 shrink-0 border-b border-border">
                         <span className="text-xs font-medium text-muted-foreground">
                           Route 映射
                         </span>
