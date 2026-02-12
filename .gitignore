@@ -27,3 +27,6 @@ npm-debug.log*
 # Go
 apps/server/tmp/
 
+# Github
+github/
+
