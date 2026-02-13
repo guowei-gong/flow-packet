@@ -9,15 +9,23 @@ export interface RequestNodeData {
   [key: string]: unknown
 }
 
+export interface CommentNodeData {
+  label: string
+  color: string
+  [key: string]: unknown
+}
+
+export type AnyNodeData = RequestNodeData | CommentNodeData
+
 interface Snapshot {
-  nodes: Node<RequestNodeData>[]
+  nodes: Node<AnyNodeData>[]
   edges: Edge[]
 }
 
 const MAX_HISTORY = 50
 
 interface CanvasStore {
-  nodes: Node<RequestNodeData>[]
+  nodes: Node<AnyNodeData>[]
   edges: Edge[]
   selectedNodeId: string | null
   editingNodeId: string | null
@@ -25,14 +33,14 @@ interface CanvasStore {
   past: Snapshot[]
   future: Snapshot[]
 
-  setNodes: (nodes: Node<RequestNodeData>[]) => void
+  setNodes: (nodes: Node<AnyNodeData>[]) => void
   setEdges: (edges: Edge[]) => void
-  updateNodes: (updater: (nodes: Node<RequestNodeData>[]) => Node<RequestNodeData>[]) => void
+  updateNodes: (updater: (nodes: Node<AnyNodeData>[]) => Node<AnyNodeData>[]) => void
   updateEdges: (updater: (edges: Edge[]) => Edge[]) => void
   setSelectedNodeId: (id: string | null) => void
   setEditingNodeId: (id: string | null) => void
-  updateNodeData: (nodeId: string, data: Partial<RequestNodeData>) => void
-  addNode: (node: Node<RequestNodeData>) => void
+  updateNodeData: (nodeId: string, data: Partial<AnyNodeData>) => void
+  addNode: (node: Node<AnyNodeData>) => void
   removeNode: (nodeId: string) => void
 
   takeSnapshot: () => void

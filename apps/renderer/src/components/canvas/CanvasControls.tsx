@@ -9,7 +9,7 @@ import {
   TooltipTrigger,
   TooltipProvider,
 } from '@/components/ui/tooltip'
-import { useCanvasStore, type RequestNodeData } from '@/stores/canvasStore'
+import { useCanvasStore, type AnyNodeData } from '@/stores/canvasStore'
 import type { Node } from '@xyflow/react'
 
 const ZOOM_DURATION = 100
@@ -63,11 +63,39 @@ export function CanvasControls() {
     if (nodes.length === 0) return
     takeSnapshot()
 
-    // Build adjacency from edges
+    // 分离备注框和业务节点
+    const commentNodes = nodes.filter((n) => n.type === 'commentNode')
+    const bizNodes = nodes.filter((n) => n.type !== 'commentNode')
+
+    if (bizNodes.length === 0) return
+
+    // 记录每个备注框在整理前包含了哪些业务节点（按几何包含判断）
+    const commentChildren = new Map<string, string[]>()
+    for (const c of commentNodes) {
+      const cx = c.position.x
+      const cy = c.position.y
+      const cw = (c.style?.width as number) ?? c.measured?.width ?? 200
+      const ch = (c.style?.height as number) ?? c.measured?.height ?? 80
+      const contained: string[] = []
+      for (const b of bizNodes) {
+        if (
+          b.position.x >= cx &&
+          b.position.y >= cy &&
+          b.position.x + (b.measured?.width ?? 220) <= cx + cw &&
+          b.position.y + (b.measured?.height ?? 80) <= cy + ch
+        ) {
+          contained.push(b.id)
+        }
+      }
+      commentChildren.set(c.id, contained)
+    }
+
+    // 仅对业务节点做拓扑排序布局
     const outgoing = new Map<string, string[]>()
     const inDegree = new Map<string, number>()
-    for (const node of nodes) inDegree.set(node.id, 0)
+    for (const node of bizNodes) inDegree.set(node.id, 0)
     for (const edge of edges) {
+      if (!inDegree.has(edge.source) || !inDegree.has(edge.target)) continue
       if (!outgoing.has(edge.source)) outgoing.set(edge.source, [])
       outgoing.get(edge.source)!.push(edge.target)
       inDegree.set(edge.target, (inDegree.get(edge.target) ?? 0) + 1)
@@ -98,8 +126,7 @@ export function CanvasControls() {
       }
     }
 
-    // Assign unvisited nodes (cycles/isolated) to layer 0
-    for (const node of nodes) {
+    for (const node of bizNodes) {
       if (!layers.has(node.id)) layers.set(node.id, 0)
     }
 
@@ -113,10 +140,8 @@ export function CanvasControls() {
     const GAP_X = 80
     const GAP_Y = 40
 
-    // Build a lookup for measured dimensions
     const nodeMap = new Map(nodes.map((n) => [n.id, n]))
 
-    // Calculate the max width of each layer column for X positioning
     const maxLayers = Math.max(...layerGroups.keys(), 0)
     const layerX = new Map<number, number>()
     let currentX = 0
@@ -127,7 +152,6 @@ export function CanvasControls() {
       currentX += maxW + GAP_X
     }
 
-    // Calculate Y offsets per layer using actual node heights
     const nodePositions = new Map<string, { x: number; y: number }>()
     for (let l = 0; l <= maxLayers; l++) {
       const ids = layerGroups.get(l) || []
@@ -139,13 +163,50 @@ export function CanvasControls() {
       }
     }
 
+    // 根据布局后的业务节点位置，重新计算每个备注框的位置和大小
+    const COMMENT_PAD = 20
+    const commentUpdates = new Map<string, { x: number; y: number; w: number; h: number }>()
+    for (const c of commentNodes) {
+      const children = commentChildren.get(c.id) || []
+      if (children.length === 0) continue
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
+      for (const childId of children) {
+        const pos = nodePositions.get(childId)
+        if (!pos) continue
+        const bNode = nodeMap.get(childId)
+        const bw = bNode?.measured?.width ?? 220
+        const bh = bNode?.measured?.height ?? 80
+        minX = Math.min(minX, pos.x)
+        minY = Math.min(minY, pos.y)
+        maxX = Math.max(maxX, pos.x + bw)
+        maxY = Math.max(maxY, pos.y + bh)
+      }
+      if (minX === Infinity) continue
+      commentUpdates.set(c.id, {
+        x: minX - COMMENT_PAD,
+        y: minY - COMMENT_PAD - 28, // 留出标题栏高度
+        w: maxX - minX + COMMENT_PAD * 2,
+        h: maxY - minY + COMMENT_PAD * 2 + 28,
+      })
+    }
+
     updateNodes((nds) =>
       nds.map((n) => {
+        // 业务节点：应用布局位置
         const pos = nodePositions.get(n.id)
-        return {
-          ...n,
-          position: pos ?? n.position,
-        } as Node<RequestNodeData>
+        if (pos) {
+          return { ...n, position: pos } as Node<AnyNodeData>
+        }
+        // 备注框：应用包裹位置
+        const cu = commentUpdates.get(n.id)
+        if (cu) {
+          return {
+            ...n,
+            position: { x: cu.x, y: cu.y },
+            style: { ...n.style, width: cu.w, height: cu.h },
+          } as Node<AnyNodeData>
+        }
+        return n
       })
     )
 

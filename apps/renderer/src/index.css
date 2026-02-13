@@ -192,6 +192,11 @@
   cursor: default !important;
 }
 
+/* 备注节点始终在业务节点下方 */
+.react-flow__node-commentNode {
+  z-index: -1 !important;
+}
+
 /* 节点选中平滑过渡 */
 .react-flow__node.selected {
   transition: box-shadow 0.3s ease;
