@@ -11,6 +11,7 @@ interface MainLayoutProps {
   left: React.ReactNode
   center: React.ReactNode
   bottom: React.ReactNode
+  tabs?: React.ReactNode
   showController?: boolean
 }
 
@@ -18,6 +19,7 @@ export function MainLayout({
   left,
   center,
   bottom,
+  tabs,
   showController = true,
 }: MainLayoutProps) {
   const [bottomCollapsed, setBottomCollapsed] = useState(false)
@@ -50,6 +52,7 @@ export function MainLayout({
       {/* 右侧：画布 + 底部日志 */}
       <ResizablePanel defaultSize={82}>
         <div className="flex flex-col h-full">
+          {tabs}
           <div className="flex-1 min-h-0 relative overflow-hidden" style={{ background: 'var(--bg-canvas)' }}>
             {center}
           </div>

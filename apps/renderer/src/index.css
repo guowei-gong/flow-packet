@@ -109,18 +109,26 @@
   --sidebar-ring: oklch(0.539 0.151 148.5);
 }
 
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
+@layer base {
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+
+  html, body, #root {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    font-family: system-ui, -apple-system, sans-serif;
+  }
 }
 
-html, body, #root {
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
-  font-family: system-ui, -apple-system, sans-serif;
-}
 
 @theme inline {
   --radius-sm: calc(var(--radius) - 4px);
@@ -214,11 +222,3 @@ html, body, #root {
   border-radius: 4px;
 }
 
-@layer base {
-  * {
-    @apply border-border outline-ring/50;
-  }
-  body {
-    @apply bg-background text-foreground;
-  }
-}

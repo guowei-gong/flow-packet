@@ -21,7 +21,7 @@ export function ProtoBrowser() {
 
   return (
     <div className="flex flex-col h-full" style={{ paddingLeft: 10 }}>
-      <div className="flex items-center justify-between px-2 h-8 shrink-0 border-b border-border">
+      <div className="flex items-center justify-between px-2 h-8 shrink-0">
         <span className="text-xs font-medium text-muted-foreground">
           协议浏览器
         </span>
