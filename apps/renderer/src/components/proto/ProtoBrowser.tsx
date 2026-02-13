@@ -94,7 +94,6 @@ function MessageNode({ message }: { message: MessageInfo }) {
       className="cursor-grab"
       draggable
       onDragStart={handleDragStart}
-      title={message.Fields?.map((f) => `${f.name}: ${f.type}`).join('\n')}
     >
       <Box className="text-blue-500" />
       {message.ShortName}

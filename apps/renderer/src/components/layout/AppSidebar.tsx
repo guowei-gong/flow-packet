@@ -1,4 +1,4 @@
-import { Plug, Library, Route, LayoutDashboard } from 'lucide-react'
+import { Plug, Library, LayoutDashboard } from 'lucide-react'
 import {
   Tooltip,
   TooltipContent,
@@ -6,12 +6,11 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 
-export type SidebarTab = '画布' | '集合' | 'Route 映射' | '连接配置'
+export type SidebarTab = '画布' | '集合' | '连接配置'
 
 const navItems: { icon: typeof LayoutDashboard; label: SidebarTab }[] = [
   { icon: LayoutDashboard, label: '画布' },
   { icon: Library, label: '集合' },
-  { icon: Route, label: 'Route 映射' },
   { icon: Plug, label: '连接配置' },
 ]
 

@@ -8,7 +8,6 @@ import { CanvasTabs } from '@/components/layout/CanvasTabs'
 import { Toolbar } from '@/components/layout/Toolbar'
 import { ProtoBrowser } from '@/components/proto/ProtoBrowser'
 import { CollectionBrowser } from '@/components/collection/CollectionBrowser'
-import { RouteMapping } from '@/components/proto/RouteMapping'
 import { FlowCanvas } from '@/components/canvas/FlowCanvas'
 import { PropertySheet } from '@/components/editor/PropertySheet'
 import { LogPanel } from '@/components/execution/LogPanel'
@@ -105,14 +104,6 @@ function App() {
                   <div className="flex flex-col h-full overflow-hidden">
                     <div className="flex-1 min-h-0 overflow-auto">
                       {activeTab === '集合' ? <CollectionBrowser /> : <ProtoBrowser />}
-                    </div>
-                    <div className="shrink-0 max-h-[40%] overflow-auto border-t border-border" style={{ paddingLeft: 10 }}>
-                      <div className="flex items-center px-2 h-7 shrink-0">
-                        <span className="text-xs font-medium text-muted-foreground">
-                          Route 映射
-                        </span>
-                      </div>
-                      <RouteMapping />
                     </div>
                   </div>
                 }

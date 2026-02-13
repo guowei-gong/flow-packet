@@ -57,8 +57,11 @@ export function FlowCanvas() {
     [updateEdges]
   )
 
+  const takeSnapshot = useCanvasStore((s) => s.takeSnapshot)
+
   const onConnect: OnConnect = useCallback(
     (connection: Connection) => {
+      takeSnapshot()
       updateEdges((eds) =>
         addEdge(
           {
@@ -69,7 +72,7 @@ export function FlowCanvas() {
         )
       )
     },
-    [updateEdges]
+    [updateEdges, takeSnapshot]
   )
 
   const onNodeClick = useCallback(
@@ -91,6 +94,10 @@ export function FlowCanvas() {
     useCanvasStore.getState().setEditingNodeId(null)
   }, [setSelectedNodeId])
 
+  const onNodeDragStart = useCallback(() => {
+    takeSnapshot()
+  }, [takeSnapshot])
+
   const onNodeDragStop = useCallback(() => {
     setSelectedNodeId(null)
     // 同时清除 ReactFlow 内部的 selected 状态
@@ -103,6 +110,14 @@ export function FlowCanvas() {
         const selectedId = useCanvasStore.getState().selectedNodeId
         if (selectedId) {
           removeNode(selectedId)
+        }
+      }
+      if (e.key === 'z' && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault()
+        if (e.shiftKey) {
+          useCanvasStore.getState().redo()
+        } else {
+          useCanvasStore.getState().undo()
         }
       }
     },
@@ -170,6 +185,7 @@ export function FlowCanvas() {
         onInit={(instance) => { reactFlowInstance.current = instance }}
         onNodeClick={onNodeClick}
         onNodeDoubleClick={onNodeDoubleClick}
+        onNodeDragStart={onNodeDragStart}
         onNodeDragStop={onNodeDragStop}
         onPaneClick={onPaneClick}
         onDragOver={onDragOver}
@@ -178,6 +194,7 @@ export function FlowCanvas() {
         edgeTypes={edgeTypes}
         colorMode="dark"
         fitView
+        fitViewOptions={{ maxZoom: 1 }}
         minZoom={0.25}
         maxZoom={2.0}
         defaultEdgeOptions={{ type: 'execEdge' }}

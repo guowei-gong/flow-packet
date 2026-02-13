@@ -38,11 +38,17 @@ export function FieldEditor({ nodeId }: FieldEditorProps) {
 
   return (
     <div className="space-y-3">
-      <div className="text-xs font-medium text-foreground">
-        {message.ShortName}
-        <span className="ml-1 text-[10px] text-muted-foreground">
-          Route: {node.data.route}
-        </span>
+      <div className="flex items-center gap-2 text-xs font-medium text-foreground">
+        <span>{message.ShortName}</span>
+        <div className="flex items-center gap-1">
+          <span className="text-[10px] text-muted-foreground">Route:</span>
+          <Input
+            type="number"
+            value={node.data.route ?? 0}
+            onChange={(e) => updateNodeData(nodeId, { route: Number(e.target.value) })}
+            className="h-5 w-16 text-[10px] px-1"
+          />
+        </div>
       </div>
 
       {message.Fields?.map((field) => (
