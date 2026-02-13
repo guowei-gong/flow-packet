@@ -47,7 +47,7 @@ export function RequestNode({ id, data, selected }: NodeProps<Node<RequestNodeDa
     >
       {/* 标题栏 — UE5 蓝图风格 */}
       <div
-        className="group rounded-t rounded-t-md bg-primary/10"
+        className="group rounded-t rounded-t-md bg-primary/20"
         style={{
           display: 'flex',
           alignItems: 'center',
@@ -66,8 +66,8 @@ export function RequestNode({ id, data, selected }: NodeProps<Node<RequestNodeDa
           flexShrink: 0,
         }} />
 
-        <Box className="size-3.5 shrink-0 text-primary" />
-        <span className="w-full truncate text-sm font-bold text-primary" style={{ padding: '2px 0' }}>
+        <Box className="size-3.5 shrink-0" style={{ color: 'var(--primary-bright)' }} />
+        <span className="w-full truncate text-sm font-bold" style={{ color: 'var(--primary-bright)', padding: '2px 0' }}>
           {shortName}
         </span>
 
