@@ -16,7 +16,9 @@ import {
   type ReactFlowInstance,
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
+import type { ColorMode } from '@xyflow/react'
 import { useCanvasStore, type RequestNodeData, type AnyNodeData } from '@/stores/canvasStore'
+import { useTheme } from '@/hooks/use-theme'
 import { useProtoStore, type MessageInfo } from '@/stores/protoStore'
 import { RequestNode } from './nodes/RequestNode'
 import { CommentNode } from './nodes/CommentNode'
@@ -42,6 +44,7 @@ export function FlowCanvas() {
   const addNode = useCanvasStore((s) => s.addNode)
   const removeNode = useCanvasStore((s) => s.removeNode)
   const routeMappings = useProtoStore((s) => s.routeMappings)
+  const theme = useTheme((s) => s.theme)
   const reactFlowWrapper = useRef<HTMLDivElement>(null)
   const reactFlowInstance = useRef<ReactFlowInstance | null>(null)
 
@@ -281,7 +284,7 @@ export function FlowCanvas() {
         onDrop={onDrop}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
-        colorMode="dark"
+        colorMode={theme as ColorMode}
         fitView
         fitViewOptions={{ maxZoom: 1 }}
         minZoom={0.25}
@@ -291,11 +294,12 @@ export function FlowCanvas() {
         <Background
           variant={BackgroundVariant.Dots}
           color="#62748e"
+          className="dark:!bg-background"
         />
         <MiniMap
           nodeStrokeWidth={4}
-          maskStrokeColor="#FFFFFF1A"
-          maskColor="#21262d77"
+          maskStrokeColor={theme === 'dark' ? '#FFFFFF1A' : '#e2e8f0'}
+          maskColor={theme === 'dark' ? '#21262d77' : '#62748e05'}
           maskStrokeWidth={1}
           nodeClassName="!fill-muted-foreground/20"
           className="!bg-background border rounded-lg overflow-hidden"

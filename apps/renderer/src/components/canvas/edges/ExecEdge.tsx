@@ -1,4 +1,5 @@
 import { getSmoothStepPath, type EdgeProps } from '@xyflow/react'
+import { cn } from '@/lib/utils'
 
 export function ExecEdge({
   id,
@@ -34,13 +35,17 @@ export function ExecEdge({
       />
       <path
         id={id}
-        className="react-flow__edge-path"
+        className={cn(
+          'react-flow__edge-path',
+          selected
+            ? '!stroke-ring dark:!stroke-primary-foreground'
+            : 'stroke-ring/60 dark:!stroke-muted-foreground',
+        )}
         d={edgePath}
         markerEnd={markerEnd}
         fill="none"
         style={{
           ...style,
-          stroke: selected ? 'var(--primary)' : 'var(--edge-exec)',
           strokeWidth: selected ? 2.5 : 2,
           strokeDasharray: selected ? '5, 5' : '0',
           animation: selected ? 'edge-dash 0.5s linear infinite' : 'none',

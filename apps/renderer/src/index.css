@@ -5,22 +5,22 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  /* 节点/引脚/连线 领域专属变量（保留） */
-  --node-bg: #2A2A4A;
+  /* 节点/引脚/连线 领域专属变量 — 白天模式 */
+  --node-bg: #F0F0FA;
   --node-title-request: #1B6EF3;
   --node-title-condition: #2ECC71;
   --node-title-delay: #F39C12;
 
   --edge-default: #4A90D9;
-  --edge-exec: #FFFFFF;
+  --edge-exec: #374151;
   --edge-active: #00FF88;
 
   --pin-string: #FF6B9D;
-  --pin-int: #7ED6DF;
+  --pin-int: #3BA8BC;
   --pin-bool: #E74C3C;
   --pin-message: #F39C12;
 
-  --primary-bright: #4ade80;
+  --primary-bright: #16a34a;
 
   --status-success: #00FF88;
   --status-error: #E74C3C;
@@ -69,6 +69,12 @@
 }
 
 .dark {
+  /* 节点/引脚/连线 领域专属变量 — 黑夜模式覆盖 */
+  --node-bg: #2A2A4A;
+  --edge-exec: #FFFFFF;
+  --pin-int: #7ED6DF;
+  --primary-bright: #4ade80;
+
   /* 区域底色（参考 VS Code 深浅层级） */
   --bg-toolbar: oklch(0.185 0.005 285.8);
   --bg-activity: oklch(0.180 0.005 285.8);
