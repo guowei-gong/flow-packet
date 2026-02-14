@@ -3,7 +3,7 @@ import { useProtoStore, type FieldInfo, type MessageInfo } from '@/stores/protoS
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
-import { NumberInput } from './inputs/NumberInput'
+import { Separator } from '@/components/ui/separator'
 import { EnumSelector } from './inputs/EnumSelector'
 import { NestedEditor } from './inputs/NestedEditor'
 import { RepeatedEditor } from './inputs/RepeatedEditor'
@@ -37,19 +37,17 @@ export function FieldEditor({ nodeId }: FieldEditorProps) {
   }
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-center gap-2 text-xs font-medium text-foreground">
-        <span>{message.ShortName}</span>
-        <div className="flex items-center gap-1">
-          <span className="text-[10px] text-muted-foreground">Route:</span>
-          <Input
-            type="number"
-            value={node.data.route ?? 0}
-            onChange={(e) => updateNodeData(nodeId, { route: Number(e.target.value) })}
-            className="h-5 w-16 text-[10px] px-1"
-          />
-        </div>
+    <div className="grid gap-3">
+      <div className="grid gap-2">
+        <Label htmlFor={`route-${nodeId}`}>路由</Label>
+        <Input
+          id={`route-${nodeId}`}
+          value={node.data.route ?? 0}
+          onChange={(e) => updateNodeData(nodeId, { route: Number(e.target.value) })}
+        />
       </div>
+
+      <Separator />
 
       {message.Fields?.map((field) => (
         <FieldInput
@@ -78,9 +76,9 @@ function FieldInput({ field, value, onChange, getMessage }: FieldInputProps) {
   // Map 类型
   if (field.isMap) {
     return (
-      <div className="space-y-1">
-        <Label className="text-xs text-muted-foreground">
-          {field.name} <span className="text-[10px]">map&lt;{field.mapKey}, {field.mapValue}&gt;</span>
+      <div className="grid gap-2">
+        <Label>
+          {field.name} <span className="text-xs text-muted-foreground">map&lt;{field.mapKey}, {field.mapValue}&gt;</span>
         </Label>
         <MapEditor
           value={(value as Record<string, unknown>) || {}}
@@ -95,9 +93,9 @@ function FieldInput({ field, value, onChange, getMessage }: FieldInputProps) {
   // Repeated 类型
   if (field.isRepeated) {
     return (
-      <div className="space-y-1">
-        <Label className="text-xs text-muted-foreground">
-          {field.name} <span className="text-[10px]">repeated {field.type}</span>
+      <div className="grid gap-2">
+        <Label>
+          {field.name} <span className="text-xs text-muted-foreground">repeated {field.type}</span>
         </Label>
         <RepeatedEditor
           value={(value as unknown[]) || []}
@@ -113,9 +111,9 @@ function FieldInput({ field, value, onChange, getMessage }: FieldInputProps) {
   if (field.kind === 'message') {
     const msgDef = getMessage(field.type)
     return (
-      <div className="space-y-1">
-        <Label className="text-xs text-muted-foreground">
-          {field.name} <span className="text-[10px]">{field.type.split('.').pop()}</span>
+      <div className="grid gap-2">
+        <Label>
+          {field.name} <span className="text-xs text-muted-foreground">{field.type.split('.').pop()}</span>
         </Label>
         <NestedEditor
           value={(value as Record<string, unknown>) || {}}
@@ -130,8 +128,8 @@ function FieldInput({ field, value, onChange, getMessage }: FieldInputProps) {
   // Enum
   if (field.kind === 'enum') {
     return (
-      <div className="space-y-1">
-        <Label className="text-xs text-muted-foreground">
+      <div className="grid gap-2">
+        <Label>
           {field.name}
         </Label>
         <EnumSelector
@@ -145,9 +143,9 @@ function FieldInput({ field, value, onChange, getMessage }: FieldInputProps) {
 
   // 标量类型
   return (
-    <div className="space-y-1">
-      <Label className="text-xs text-muted-foreground">
-        {field.name} <span className="text-[10px]">{field.type}</span>
+    <div className="grid gap-2">
+      <Label>
+        {field.name} <span className="text-xs text-muted-foreground">{field.type}</span>
       </Label>
       <ScalarInput type={field.type} value={value} onChange={onChange} />
     </div>
@@ -176,7 +174,6 @@ function ScalarInput({
         <Input
           value={(value as string) ?? ''}
           onChange={(e) => onChange(e.target.value)}
-          className="h-7 text-xs"
         />
       )
     case 'bytes':
@@ -184,25 +181,24 @@ function ScalarInput({
         <Input
           value={(value as string) ?? ''}
           onChange={(e) => onChange(e.target.value)}
-          className="h-7 text-xs font-mono"
+          className="font-mono"
           placeholder="十六进制"
         />
       )
     case 'float':
     case 'double':
       return (
-        <NumberInput
-          value={value as number}
-          onChange={onChange}
-          isFloat
+        <Input
+          value={(value as number) ?? ''}
+          onChange={(e) => onChange(e.target.value === '' ? 0 : Number(e.target.value))}
         />
       )
     default:
       // int32, int64, uint32, uint64, sint32, sint64, fixed32, fixed64, sfixed32, sfixed64
       return (
-        <NumberInput
-          value={value as number}
-          onChange={onChange}
+        <Input
+          value={(value as number) ?? ''}
+          onChange={(e) => onChange(e.target.value === '' ? 0 : Number(e.target.value))}
         />
       )
   }

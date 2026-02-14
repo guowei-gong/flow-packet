@@ -74,7 +74,7 @@ export function Toolbar({ onBack }: ToolbarProps) {
         </Button>
       )}
       <span className="text-sm font-semibold text-foreground">
-        flow-packet
+        FlowPacket
       </span>
 
       <div className="flex-1" />

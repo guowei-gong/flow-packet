@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import type { FrameConfig } from '@/types/frame'
 
 export interface SavedConnection {
   id: string
@@ -8,6 +9,7 @@ export interface SavedConnection {
   port: number
   protocol: 'tcp'
   color: string
+  frameConfig?: FrameConfig
   createdAt: number
   updatedAt: number
 }

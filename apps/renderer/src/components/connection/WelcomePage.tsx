@@ -90,7 +90,7 @@ export function WelcomePage({ onEnterConnection }: WelcomePageProps) {
                 <Plug className="w-5 h-5 text-primary" />
               </div>
               <div>
-                <h1 className="text-lg font-bold text-foreground">flow-packet</h1>
+                <h1 className="text-lg font-bold text-foreground">FlowPacket</h1>
                 <p className="text-[11px] text-muted-foreground">v0.1.0</p>
               </div>
             </div>
@@ -136,7 +136,7 @@ export function WelcomePage({ onEnterConnection }: WelcomePageProps) {
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="搜索连接... (Ctrl F)"
+              placeholder="搜索连接"
               className="h-7 pl-7 text-xs bg-transparent border-0 shadow-none focus-visible:ring-0"
             />
           </div>

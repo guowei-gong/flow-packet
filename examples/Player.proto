@@ -1,0 +1,120 @@
+syntax = "proto3";
+package pb;
+option go_package = "/pb";
+
+//格式： C2S/S2C_CMD_ACT
+import "source/DataStruct.proto";
+
+message C2S_Player_Create {
+  string name = 1;
+  bool sexuality = 2;
+  string token = 3;
+}
+
+message S2C_Player_Create {
+
+}
+
+message C2S_Player_EnterGame {
+  int64 time = 1;
+  string token = 2;
+}
+
+message S2C_Player_EnterGame {
+  PlayerData data = 1;
+  repeated RoleData roles = 2;
+  map<string, ItemData> items = 3;
+  AlbumData album = 4;
+  TransformData worldTransform = 5;
+  WorldData world = 6;
+  PlayerMapData mapData = 7;
+  map<int32,NpcStore> stores = 8;// 商店列表
+}
+
+message S2C_Player_Update {
+  PlayerData data = 1;
+}
+
+message S2C_Player_UpdateOneTeam {
+  TeamData data = 1;
+}
+
+message S2C_Player_UpdateTeamIndex {
+  string index = 1;
+}
+
+message C2S_Player_SetTeamName {
+  int32 index = 1;
+  string name = 2;
+}
+
+message S2C_Player_SetTeamName {
+
+}
+
+message C2S_Player_SetTeamRole {
+  int32 index = 1;
+  repeated string roleIds = 2;
+}
+
+message S2C_Player_SetTeamRole {
+
+}
+
+message C2S_Player_SetTeamIndex {
+  int32 index = 1;
+}
+
+message S2C_Player_SetTeamIndex {
+  PlayerData data = 1;
+}
+
+// 修改 FLAG 标记
+message C2S_Player_SetFlag {
+  int32 cfgId = 1;
+}
+
+message S2C_Player_SetFlag {
+  string value = 1;
+}
+
+// 退出登录
+message C2S_Player_Logout {}
+
+message S2C_Player_Logout {}
+
+// 兑换体力
+message C2S_Player_ExchangeVigor {
+  int32 exchangeId = 1; // 兑换表id
+  int32 count = 2; // 兑换次数
+}
+
+message S2C_Player_ExchangeVigor  {
+  int32 buyCount = 1; // 当天已兑换次数
+  bool isDiamond = 2; // 是否钻石兑换
+  int32 itemId = 3;
+  repeated RewardData rewards = 4;
+}
+
+// 玩家获得经验值通知
+message S2C_Player_ExpReward {
+  int32 exp = 1;
+}
+
+// 玩家等级显示通知
+message S2C_Player_Level {
+  int32 lv = 1;
+  bool isLevelUp = 2;// 是否升级（判断升级特效）
+}
+
+// 体力数据同步通知
+message S2C_Player_VigorRecover {
+  optional int64 lastRecoverTimeMs = 1;
+  int32 vigorCount = 2;
+  int32 spareVigorCount = 3;
+}
+
+// 每日刷新数据
+message S2C_Player_UpdateVigorBuyCount {
+  optional int32 buyVigorCount = 1;
+}

@@ -116,7 +116,7 @@ function App() {
             className="flex items-center h-10 px-3 shrink-0 border-b border-border"
             style={{ background: 'var(--bg-toolbar)' }}
           >
-            <span className="text-sm font-semibold text-foreground">flow-packet</span>
+            <span className="text-sm font-semibold text-foreground">FlowPacket</span>
             <div className="flex-1" />
             <ThemeToggle />
           </div>
