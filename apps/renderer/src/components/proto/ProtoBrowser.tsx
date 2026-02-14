@@ -20,7 +20,7 @@ export function ProtoBrowser() {
   const files = useProtoStore((s) => s.files)
 
   return (
-    <div className="flex flex-col h-full" style={{ paddingLeft: 10 }}>
+    <div className="flex flex-col h-full px-2.5">
       <div className="flex items-center justify-between px-2 h-8 shrink-0">
         <span className="text-xs font-medium text-muted-foreground">
           协议浏览器
@@ -32,7 +32,7 @@ export function ProtoBrowser() {
       </div>
 
       <ScrollArea className="flex-1">
-        <SidebarGroup>
+        <SidebarGroup className="px-0">
           <SidebarGroupLabel>Proto 文件</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>

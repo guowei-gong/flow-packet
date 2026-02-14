@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { ReactFlowProvider } from '@xyflow/react'
 import type { Node } from '@xyflow/react'
 import { SidebarProvider } from '@/components/ui/sidebar'
+import { Toaster } from '@/components/ui/sonner'
 import { AppSidebar, type SidebarTab } from '@/components/layout/AppSidebar'
 import { MainLayout } from '@/components/layout/MainLayout'
 import { CanvasTabs } from '@/components/layout/CanvasTabs'
@@ -11,18 +12,24 @@ import { CollectionBrowser } from '@/components/collection/CollectionBrowser'
 import { FlowCanvas } from '@/components/canvas/FlowCanvas'
 import { PropertySheet } from '@/components/editor/PropertySheet'
 import { LogPanel } from '@/components/execution/LogPanel'
+import { WelcomePage } from '@/components/connection/WelcomePage'
 import { initEventBindings } from '@/services/eventBindings'
 import { connect as wsConnect, setConnectionStatusCallback } from '@/services/ws'
 import { useTabStore } from '@/stores/tabStore'
 import { useCanvasStore, type RequestNodeData } from '@/stores/canvasStore'
 import { useProtoStore } from '@/stores/protoStore'
+import { useConnectionStore } from '@/stores/connectionStore'
+import type { SavedConnection } from '@/stores/savedConnectionStore'
+import { ThemeToggle } from '@/components/layout/ThemeToggle'
 
 function App() {
   const [activeTab, setActiveTab] = useState<SidebarTab>('画布')
+  const [activeConnectionId, setActiveConnectionId] = useState<string | null>(null)
   const activeTabId = useTabStore((s) => s.activeTabId)
   const addTab = useTabStore((s) => s.addTab)
   const addNode = useCanvasStore((s) => s.addNode)
   const routeMappings = useProtoStore((s) => s.routeMappings)
+  const setConfig = useConnectionStore((s) => s.setConfig)
 
   const onEmptyDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault()
@@ -86,13 +93,51 @@ function App() {
     return cleanup
   }, [])
 
+  const handleEnterConnection = useCallback((connection: SavedConnection) => {
+    setConfig({
+      host: connection.host,
+      port: connection.port,
+      protocol: connection.protocol,
+    })
+    setActiveConnectionId(connection.id)
+  }, [setConfig])
+
+  const handleBackToWelcome = useCallback(() => {
+    setActiveConnectionId(null)
+  }, [])
+
+  // 欢迎页面 - 无活跃连接时显示
+  if (!activeConnectionId) {
+    return (
+      <>
+        <div className="flex h-svh flex-col w-full">
+          {/* 顶部工具栏 */}
+          <div
+            className="flex items-center h-10 px-3 shrink-0 border-b border-border"
+            style={{ background: 'var(--bg-toolbar)' }}
+          >
+            <span className="text-sm font-semibold text-foreground">flow-packet</span>
+            <div className="flex-1" />
+            <ThemeToggle />
+          </div>
+
+          {/* 欢迎页面 */}
+          <div className="flex-1 min-h-0">
+            <WelcomePage onEnterConnection={handleEnterConnection} />
+          </div>
+        </div>
+        <Toaster position="top-center" richColors />
+      </>
+    )
+  }
+
   return (
     <ReactFlowProvider>
       <SidebarProvider open={false} onOpenChange={() => {}}>
         <div className="flex h-svh flex-col w-full">
           {/* 顶部工具栏 - 全宽最高层级 */}
           <div className="flex items-center h-10 px-3 shrink-0 border-b border-border" style={{ background: 'var(--bg-toolbar)' }}>
-            <Toolbar />
+            <Toolbar onBack={handleBackToWelcome} />
           </div>
 
           {/* 下方区域：导航栏 + 内容 */}
@@ -127,6 +172,7 @@ function App() {
           </div>
         </div>
         <PropertySheet />
+        <Toaster position="top-center" richColors />
       </SidebarProvider>
     </ReactFlowProvider>
   )

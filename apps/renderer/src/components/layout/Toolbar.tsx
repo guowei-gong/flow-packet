@@ -1,6 +1,7 @@
-import { Play, Square } from 'lucide-react'
+import { Play, Square, ArrowLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { ThemeToggle } from '@/components/layout/ThemeToggle'
 import { useConnectionStore } from '@/stores/connectionStore'
 import { useExecutionStore } from '@/stores/executionStore'
 import { executeFlow, stopFlow } from '@/services/api'
@@ -20,7 +21,11 @@ const stateLabels: Record<string, string> = {
   reconnecting: '重连中...',
 }
 
-export function Toolbar() {
+interface ToolbarProps {
+  onBack?: () => void
+}
+
+export function Toolbar({ onBack }: ToolbarProps) {
   const connState = useConnectionStore((s) => s.state)
   const targetAddr = useConnectionStore((s) => s.targetAddr)
   const execStatus = useExecutionStore((s) => s.status)
@@ -58,6 +63,16 @@ export function Toolbar() {
 
   return (
     <div className="flex items-center gap-2 w-full">
+      {onBack && (
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7 shrink-0"
+          onClick={onBack}
+        >
+          <ArrowLeft className="w-3.5 h-3.5" />
+        </Button>
+      )}
       <span className="text-sm font-semibold text-foreground">
         flow-packet
       </span>
@@ -98,6 +113,8 @@ export function Toolbar() {
           )}
         </Badge>
       </div>
+
+      <ThemeToggle />
     </div>
   )
 }
