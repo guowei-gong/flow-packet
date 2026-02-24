@@ -16,8 +16,9 @@ export interface ServerMessage {
 let ws: WebSocket | null = null
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null
 let reconnectAttempts = 0
-const MAX_RECONNECT = 30
-const RECONNECT_INTERVAL = 1000
+const MAX_RECONNECT = Infinity
+const RECONNECT_BASE = 1000
+const RECONNECT_MAX = 10000
 
 const pendingRequests = new Map<string, { resolve: (v: unknown) => void; reject: (e: Error) => void; timer: ReturnType<typeof setTimeout> }>()
 const eventSubscribers = new Map<string, Set<EventCallback>>()
@@ -132,7 +133,9 @@ function scheduleReconnect(port: number) {
   if (reconnectAttempts >= MAX_RECONNECT) return
   reconnectAttempts++
 
+  // 指数退避：1s → 2s → 4s → ... → 最大 10s
+  const delay = Math.min(RECONNECT_BASE * Math.pow(2, reconnectAttempts - 1), RECONNECT_MAX)
   reconnectTimer = setTimeout(() => {
     connect(port)
-  }, RECONNECT_INTERVAL)
+  }, delay)
 }
