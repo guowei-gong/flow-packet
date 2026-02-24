@@ -1,0 +1,236 @@
+//Define CMD和ACT定义文件
+syntax = "proto3";
+package pb;
+option go_package = "/pb";
+
+//CMD按模块归类
+
+enum CMD {
+  Account = 0;
+  Player = 1;
+  Role = 2;
+  Shop = 3;
+  Bag = 4;
+  Task = 5;
+  Level = 6;
+  Weapon = 7;
+  Npc = 8;
+  World = 9;
+  Dungeon = 10;
+  Map = 11;
+  Album = 12;
+  Benchmark = 13;
+}
+
+//ACT格式： ACT_CMD      C2S/S2C_ACT
+
+enum ACT_Account {
+  C2S_GM = 0;
+  S2C_GM = 1;
+  C2S_Ping = 2;
+  S2C_Pong = 3;
+  C2S_Login = 4;
+  S2C_Login = 5;
+}
+
+enum ACT_Player {
+  C2S_Create = 0;
+  S2C_Create = 1;
+  C2S_EnterGame = 3;
+  S2C_EnterGame = 4;
+  S2C_UpdateOneTeam = 5;
+  S2C_UpdateTeamIndex = 6;
+  C2S_SetTeamName = 7;
+  S2C_SetTeamName = 8;
+  C2S_SetTeamRole = 9;
+  S2C_SetTeamRole = 10;
+  C2S_SetTeamIndex = 11;
+  S2C_SetTeamIndex = 12;
+  C2S_SetFlag = 13;
+  S2C_SetFlag = 14;
+  S2C_ExpReward = 15;
+  S2C_Level = 16;
+  C2S_Logout = 17;
+  S2C_Logout = 18;
+  C2S_ExchangeVigor = 19;
+  S2C_ExchangeVigor = 20;
+  S2C_VigorRecover = 21;
+  S2C_UpdateVigorBuyCount = 22;
+}
+
+enum ACT_Role {
+  C2S_Breakthrough = 0;
+  S2C_Breakthrough = 1;
+  C2S_ToggleFavorite = 2;
+  S2C_ToggleFavorite = 3;
+  C2S_LevelUp = 4;
+  S2C_LevelUp = 5;
+  C2S_ClearRedDot = 6;
+  S2C_ClearRedDot = 7;
+  C2S_SkillUp = 8;
+  S2C_SkillUp = 9;
+  C2S_AllocatePoint = 10;
+  S2C_AllocatePoint = 11;
+  C2S_ResetPoint = 12;
+  S2C_ResetPoint = 13;
+  C2S_ActivatePotential = 14;
+  S2C_ActivatePotential = 15;
+  C2S_IncrAffection = 16;
+  S2C_IncrAffection = 17;
+  C2S_ReceiveAffectionReward = 18;
+  S2C_ReceiveAffectionReward = 19;
+  C2S_EquipSkin = 20;
+  S2C_EquipSkin = 21;
+  C2S_ReadDiary = 22;
+  S2C_ReadDiary = 23;
+  S2C_UpdateRole = 24;
+  S2C_UpdateRedDot = 25;
+}
+
+enum ACT_Bag {
+  C2S_UseItem = 0;
+  S2C_UseItem = 1;
+  C2S_UpdateItemLock = 2;
+  S2C_UpdateItemLock = 3;
+  C2S_RecycleItem = 4;
+  S2C_RecycleItem = 5;
+  S2C_UpdateItem = 6;
+  C2S_SetQuickBagItem = 7;
+  S2C_SetQuickBagItem = 8;
+  C2S_RemoveQuickBagItem = 9;
+  S2C_RemoveQuickBagItem = 10;
+  C2S_UseQuickBagItem = 11;
+  S2C_UseQuickBagItem = 12;
+  C2S_SetMainQuickBagSlot = 13;
+  S2C_SetMainQuickBagSlot = 14;
+  S2C_UpdateMainQuickBagSlot = 15;
+}
+
+enum ACT_Weapon {
+  C2S_ReverseLockWeapon = 0;
+  S2C_ReverseLockWeapon = 1;
+  C2S_UpWeaponLvl = 2;
+  S2C_UpWeaponLvl = 3;
+  C2S_BreakWeaponLvl = 4;
+  S2C_BreakWeaponLvl = 5;
+  C2S_TeardownWeapon = 6;
+  S2C_TeardownWeapon = 7;
+  C2S_PreviewTeardownWeapon = 8;
+  S2C_PreviewTeardownWeapon = 9;
+  C2S_UseWeapon = 10;
+  S2C_UseWeapon = 11;
+  C2S_GetWeaponById = 12;
+  S2C_GetWeaponById = 13;
+}
+
+enum ACT_Task {
+  C2S_Add = 0;
+  S2C_Add = 1;
+  C2S_DelRedDot = 2;
+  S2C_DelRedDot = 3;
+  C2S_Track = 4;
+  S2C_Track = 5;
+  C2S_SubmitItem = 6;
+  S2C_SubmitItem = 7;
+  C2S_GetCompleted = 8;
+  S2C_GetCompleted = 9;
+  S2C_New = 10;
+  S2C_Del = 11;
+  S2C_Update = 12;
+  S2C_Unlock = 13;
+  S2C_Open = 14;
+  C2S_CompleteCond = 15;
+  S2C_CompleteCond = 16;
+}
+
+enum ACT_Npc {
+  C2S_BuyItem = 0;
+  S2C_BuyItem = 1;
+  C2S_UpdateDialog = 2;
+  S2C_UpdateDialog = 3;
+  S2C_UpdateStore = 4;
+}
+
+enum ACT_World {
+  C2S_ActivateRespawnPoint = 0;
+  S2C_ActivateRespawnPoint = 1;
+  C2S_UseCollectPoint = 2;
+  S2C_UseCollectPoint = 3;
+  C2S_UseBrokenPoint = 4;
+  S2C_UseBrokenPoint = 5;
+  C2S_OpenTreasureBox = 6;
+  S2C_OpenTreasureBox = 7;
+  C2S_KillMonster = 8;
+  S2C_KillMonster = 9;
+  C2S_GetWorldTransform = 10;
+  S2C_GetWorldTransform = 11;
+  C2S_SyncWorldTransform = 12;
+  S2C_SyncWorldTransform = 13;
+  C2S_WorldRebirth = 14;
+  S2C_WorldRebirth = 15;
+  C2S_InteractSwitch = 16;
+  S2C_InteractSwitch = 17;
+  C2S_UnlockRegion = 18;
+  S2C_UnlockRegion = 19;
+  C2S_CollectReward = 20;
+  S2C_CollectReward = 21;
+  S2C_UpdateInstance = 22;
+  S2C_UpdateWorld = 23;
+  C2S_ApproachMonster = 24;
+  S2C_ApproachMonster = 25;
+  C2S_UseLightPoint = 26;
+  S2C_UseLightPoint = 27;
+  C2S_ArriveBlock = 28;
+  S2C_ArriveBlock = 29;
+  C2S_AdjustWorldLevel = 30;
+  S2C_AdjustWorldLevel = 31;
+  C2S_ActivateAnchor = 32;
+  S2C_ActivateAnchor = 33;
+  C2S_UseAnchor = 34;
+  S2C_UseAnchor = 35;
+  S2C_UpdateWorldLv = 36;
+}
+
+enum ACT_Dungeon {
+  C2S_Enter = 0;
+  S2C_Enter = 1;
+  C2S_Settle = 2;
+  S2C_Settle = 3;
+  C2S_GetTransform = 4;
+  S2C_GetTransform = 5;
+  C2S_SyncTransform = 6;
+  S2C_SyncTransform = 7;
+  C2S_Rebirth = 8;
+  S2C_Rebirth = 9;
+  C2S_Reward = 10;
+  S2C_Reward = 11;
+  C2S_CompleteChallenge = 12;
+  S2C_CompleteChallenge = 13;
+}
+
+enum ACT_Map {
+  C2S_CreateMark = 0;
+  S2C_CreateMark = 1;
+  C2S_UpdateMark = 2;
+  S2C_UpdateMark = 3;
+  C2S_DeleteMark = 4;
+  S2C_DeleteMark = 5;
+  C2S_TraceMark = 6;
+  S2C_TraceMark = 7;
+  C2S_CancelTrace = 8;
+  S2C_CancelTrace = 9;
+  S2C_UpdatePlayerMap = 10;
+}
+
+enum ACT_Album {
+  C2S_ClearNewFlag = 0;
+  S2C_ClearNewFlag = 1;
+  S2C_AlbumUpdate = 2;
+  C2S_UnlockAction = 3;
+  S2C_UnlockAction = 4;
+}
+
+enum ACT_Benchmark {
+  C2S_Greet = 0;
+  S2C_Greet = 1;
+}

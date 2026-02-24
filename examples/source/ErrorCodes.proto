@@ -1,0 +1,74 @@
+syntax = "proto3";
+package pb;
+option go_package = "/pb";
+
+// 错误码结构
+// [模块码][具体错误码]
+
+enum ErrorCode {
+    // 系统错误
+    SUCCESS = 0; // 成功
+    INTERNAL_ERROR = 1; // 内部错误
+    PARAM_INVALID = 2; // 参数无效
+    CONFIG_NOT_FOUND = 3; // 配置不存在
+
+    // 玩家模块
+    PLAYER_NOT_FOUND = 1001; // 玩家不存在
+    PLAYER_TOKEN_INVALID = 1002; // 玩家 token 无效
+    PLAYER_EXCHANGE_COUNT_LIMIT = 1003; // 玩家可兑换次数达到上限
+
+    // 角色模块
+    ROLE_NOT_FOUND = 2001; // 角色不存在
+    ROLE_SECOND_ATTR_NOT_FOUND = 2002; // 二级属性不存在
+    ROLE_DAILY_RESET_POINT_CAP = 2003; // 角色每日重置加点次数达到上限
+
+    // 背包模块
+    ITEM_NOT_FOUND = 4001; // 物品不存在
+    BAG_NOT_FOUND = 4002; // 背包不存在
+    ITEM_NOT_ENOUGH = 4003; // 道具数量不足
+    QUICK_BAG_NOT_FOUND = 4004; // 快捷背包不存在
+    CONSUME_ITEM_FAILED = 4005; // 消耗道具失败
+    USE_ITEM_REWARD_IS_NULL = 4006; // 使用道具后获取的道具为空
+
+    // 任务模块
+    TASK_ALREADY_RECEIVED = 5001; // 任务已被领取
+    TASK_NOT_FOUND = 5002; // 任务不存在
+    TASK_ALREADY_COMPLETED = 5003; // 任务已完成
+    TASK_NOT_OPEN = 5004; // 任务不满足开放条件
+    TASK_ITEM_OVER_THRESHOLD = 5005; // 提交任务道具超过阈值
+    TASK_CAN_NOT_COMPLETE = 5006; // 任务无法客户端主动完成
+    TASK_MONOTONIC_INCREMENT_NOT_MET = 5007; // 任务条件不满足单项递增
+
+    // NPC 模块
+    NPC_STORE_NOT_OPEN = 6001; // 商店未解锁
+    NPC_STORE_ITEM_NOT_OPEN = 6002; // 商品未解锁
+    BUY_COUNT_OUT_OF_LIMIT = 6003; // 超出限购数量
+    COST_ITEM_NOT_ENOUGH = 6004; // 道具数量不足
+    REWARD_FAILED = 6005; // 发放奖励失败
+    NPC_STORE_CLOSED = 6006;// 商店已关闭
+    NPC_DIALOG_HAS_EXIST = 6007; //npc对话已存在
+    NPC_STORE_REFRESHED = 6008;// 商店已刷新
+
+    // 图鉴模块
+
+    // 地图模块
+    CREATE_MARK_FAILED = 8001; // 创建自定义标记失败
+    MARK_NOT_EXIST = 8002; // 标记不存在
+    MARK_COUNT_LIMIT = 8003; // 自定义标记达到上限
+
+    // 大世界模块
+    WORLD_INSTANCE_ALREADY_USED = 9001; // 资源实例已被使用
+    COLLECTION_COUNT_NOT_ENOUGH = 9002; // 收集品数量不足
+    COLLECTION_REWARD_ALREADY_RECEIVE = 9003; // 收集品奖励已领取
+    WORLD_LEVEL_ADJUST_IN_CD = 9004; // 世界等级调整冷却中
+    WORLD_LEVEL_CAN_NOT_ADJUST= 9005; // 世界等级无法继续调整
+
+    // 副本模块
+    PLAYER_NOT_IN_DUNGEON = 10001; // 玩家不在副本中
+    DUNGEON_CAN_NOT_REBIRTH = 10002; // 副本禁止复活
+
+    // 日常挑战副本
+    DUNGEON_STAGE_NOT_REWARD = 11001;// 玩家不处于可领奖状态
+    DUNGEON_LOCKED = 11002; // 玩家副本未解锁
+    NOT_IN_DUNGEON = 11003; // 玩家不在副本中
+}

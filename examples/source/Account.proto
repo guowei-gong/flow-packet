@@ -1,0 +1,54 @@
+syntax = "proto3";
+package pb;
+option go_package = "/pb";
+
+//格式： C2S/S2C_CMD_ACT
+import "source/DataStruct.proto";
+
+message C2S_Account_GM {
+  int32 cmd = 1;
+  string params = 2;
+}
+
+message S2C_Account_GM {
+  string info = 1;
+}
+
+message C2S_Account_Ping {
+  int64 time = 1;
+}
+
+message S2C_Account_Pong {
+  int64 time = 1;
+}
+
+// 程序测试阶段使用的玩家登录
+message C2S_Account_Login {
+  string accountId = 1;
+  string password = 2;
+}
+
+message S2C_Account_Login {
+  int64 time = 1; // 登录时间，秒级时间戳
+  bool isNew = 2; // 是否为新用户
+  string addr = 3; // 游戏服地址
+  int32 port = 4; // 游戏服端口
+  string token = 5; // 登录令牌
+}
+
+// 获取验证码
+message C2S_Account_GetVerifyCode {
+  string telephone = 1;
+  int32 codeType = 2; // 验证码类型，1:登录; 2:修改密码
+}
+
+message S2C_Account_GetVerifyCode {}
+
+// 修改密码
+message C2S_Account_ModifyPassword {
+  string telephone = 1;
+  string password = 2;
+  string verifyCode = 3;
+}
+
+message S2C_Account_ModifyPassword {}

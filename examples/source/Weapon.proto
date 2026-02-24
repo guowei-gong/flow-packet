@@ -1,0 +1,76 @@
+syntax = "proto3";
+package pb;
+option go_package = "/pb";
+
+//格式： C2S/S2C_CMD_ACT
+
+import "source/DataStruct.proto";
+
+// 锁定/解锁武器
+message C2S_Weapon_ReverseLockWeapon {
+  string weaponId = 1;
+}
+
+message S2C_Weapon_ReverseLockWeapon {
+  ItemData item = 1;
+}
+
+// 武器升级
+message C2S_Weapon_UpWeaponLvl {
+  string weaponId = 1;
+  repeated ItemData items = 2;
+}
+
+message S2C_Weapon_UpWeaponLvl {
+  WeaponData weapon = 1;
+  repeated ItemData addItems = 2;  // 经验移除返还的道具
+}
+
+// 武器等级突破
+message C2S_Weapon_BreakWeaponLvl {
+  string weaponId = 1;
+}
+
+message S2C_Weapon_BreakWeaponLvl {
+  WeaponData weapon = 1;
+}
+
+// 武器拆解
+message C2S_Weapon_TeardownWeapon {
+  repeated string weaponIds = 1;
+}
+
+message S2C_Weapon_TeardownWeapon {
+  repeated ItemData items = 1;
+}
+
+// 武器拆解预览
+message C2S_Weapon_PreviewTeardownWeapon {
+  repeated string weaponIds = 1;
+}
+
+message S2C_Weapon_PreviewTeardownWeapon {
+  repeated ItemData items = 1;
+}
+
+// 装备武器
+message C2S_Weapon_UseWeapon {
+  string roleId = 1;
+  string weaponId = 2;
+}
+
+message S2C_Weapon_UseWeapon {
+
+}
+
+// 根据武器ID，获取武器详情
+message C2S_Weapon_GetWeaponById {
+  string id = 1;
+}
+
+message S2C_Weapon_GetWeaponById {
+  WeaponData weapon = 1;
+}
+
+
+// ------------------------------- 通知相关 -------------------------------

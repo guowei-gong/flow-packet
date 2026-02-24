@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/flow-packet/server/internal/parser"
 )
@@ -63,11 +64,29 @@ func makeProtoUploadHandler(state *AppState, srv *Server) http.HandlerFunc {
 			return
 		}
 
-		// 保存文件
-		var savedPaths []string
-		for _, fh := range files {
-			if filepath.Ext(fh.Filename) != ".proto" {
-				writeJSONError(w, http.StatusBadRequest, fmt.Sprintf("invalid file type: %s", fh.Filename))
+		// 前端通过 paths 字段发送每个文件的相对路径（与 files 一一对应）
+		paths := r.MultipartForm.Value["paths"]
+
+		// 清空旧文件，避免残留文件干扰解析
+		os.RemoveAll(state.ProtoDir)
+		os.MkdirAll(state.ProtoDir, 0755)
+
+		// 保存文件（保留子目录结构）
+		for i, fh := range files {
+			// 优先使用 paths 字段的相对路径，回退到 fh.Filename
+			saveName := fh.Filename
+			if i < len(paths) && paths[i] != "" {
+				saveName = paths[i]
+			}
+
+			// 清理路径，防止目录穿越
+			cleanName := filepath.Clean(saveName)
+			if strings.Contains(cleanName, "..") {
+				writeJSONError(w, http.StatusBadRequest, fmt.Sprintf("invalid path: %s", saveName))
+				return
+			}
+			if filepath.Ext(cleanName) != ".proto" {
+				writeJSONError(w, http.StatusBadRequest, fmt.Sprintf("invalid file type: %s", saveName))
 				return
 			}
 
@@ -77,7 +96,12 @@ func makeProtoUploadHandler(state *AppState, srv *Server) http.HandlerFunc {
 				return
 			}
 
-			dstPath := filepath.Join(state.ProtoDir, fh.Filename)
+			dstPath := filepath.Join(state.ProtoDir, cleanName)
+			// 创建子目录
+			if dir := filepath.Dir(dstPath); dir != "." {
+				os.MkdirAll(dir, 0755)
+			}
+
 			dst, err := os.Create(dstPath)
 			if err != nil {
 				src.Close()
@@ -88,11 +112,10 @@ func makeProtoUploadHandler(state *AppState, srv *Server) http.HandlerFunc {
 			io.Copy(dst, src)
 			src.Close()
 			dst.Close()
-			savedPaths = append(savedPaths, dstPath)
 		}
 
-		// 解析所有 proto 文件
-		result, err := parser.ParseProtoFiles(savedPaths)
+		// 解析整个 protoDir 下所有 proto 文件
+		result, err := parser.ParseProtoDir(state.ProtoDir)
 		if err != nil {
 			writeJSONError(w, http.StatusBadRequest, fmt.Sprintf("parse error: %v", err))
 			return

@@ -1,0 +1,12 @@
+syntax = "proto3";
+package pb;
+option go_package = "/pb";
+
+message C2S_GM_Greet {
+  string message = 1;
+}
+
+message S2C_GM_Greet {
+  string code = 1;
+  string message = 2;
+}

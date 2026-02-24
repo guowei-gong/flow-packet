@@ -1,0 +1,65 @@
+syntax = "proto3";
+package pb;
+option go_package = "/pb";
+
+//格式： C2S/S2C_CMD_ACT
+import "source/DataStruct.proto";
+
+
+// 放置自定义标记点
+message C2S_Map_CreateMark {
+  int32 iconType = 1;
+  Vector3Data position = 2;
+  int32 levelId = 3; // 关卡id
+}
+
+//
+message S2C_Map_CreateMark {
+  MarkPointData mark = 1;
+}
+
+// 更新自定义标记详情
+message C2S_Map_UpdateMark {
+  string markId = 1;
+  string name = 2;
+  int32 type = 3;
+}
+
+// 更新自定义标记详情回复
+message S2C_Map_UpdateMark {
+  MarkPointData mark = 1;
+}
+
+// 删除
+message C2S_Map_DeleteMark {
+  string markId = 1;
+}
+
+message S2C_Map_DeleteMark {
+  string markId = 1;
+}
+
+// 追踪标记点
+message C2S_Map_TraceMark {
+  string id = 1; // 实例id/配置表id
+  int32 type = 2;// 标记类型
+}
+
+
+message S2C_Map_TraceMark {
+  TraceMarkData traceMark = 1;
+}
+
+// 取消追踪标记点
+message C2S_Map_CancelTrace {
+}
+
+message S2C_Map_CancelTrace {
+
+}
+
+// ------------------------------ Notify ------------------------------
+
+message S2C_Map_UpdatePlayerMap {
+  PlayerMapData newData = 1;
+}

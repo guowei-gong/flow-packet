@@ -1,0 +1,91 @@
+syntax = "proto3";
+package pb;
+option go_package = "/pb";
+
+//格式： C2S/S2C_CMD_ACT
+import "source/DataStruct.proto";
+import "source/Consts.proto";
+
+// 使用物品道具
+message C2S_Bag_UseItem {
+  string id = 1;
+  int32 count = 2; // 数量
+  string targetId = 3; // 道具使用目标 id
+  int32 selectId = 4; // 选中的道具
+}
+
+message S2C_Bag_UseItem {
+  int32 cfgID = 1;
+  repeated RewardData reward = 2;
+}
+
+// 更新物品锁定
+message C2S_Bag_UpdateItemLock {
+  string id = 1;
+  bool status = 2; // 是否锁定
+}
+
+message S2C_Bag_UpdateItemLock {
+  string id = 1;
+  bool status = 2; 
+}
+
+// 物品回收
+message C2S_Bag_RecycleItem {
+  repeated RecycleItemDetail items = 1;
+}
+
+message S2C_Bag_RecycleItem {
+  repeated RewardData rewards = 1;
+}
+
+// 使用快捷背包物品
+message C2S_Bag_UseQuickBagItem {
+  QuickBagSlot slot = 1; // 快捷背包插槽位置，从 0 开始
+  int32 count = 2; // 使用数量，默认为1
+}
+
+message S2C_Bag_UseQuickBagItem {
+  QuickBagData quickBag = 1;
+  repeated RewardData rewards = 2;
+}
+
+// 设置物品到快捷背包的指定插槽
+message C2S_Bag_SetQuickBagItem {
+  string id = 1;
+  QuickBagSlot slot = 2; // 快捷背包插槽位置，从0开始
+}
+
+message S2C_Bag_SetQuickBagItem {
+  repeated QuickBagData quickBags = 1;
+}
+
+// 移除快捷背包物品
+message C2S_Bag_RemoveQuickBagItem {
+  QuickBagSlot slot = 1; // 快捷背包插槽位置，从0开始
+}
+
+message S2C_Bag_RemoveQuickBagItem {
+  QuickBagSlot slot = 1;
+}
+
+// 设置主 UI 中，能量条左侧的插槽
+message C2S_Bag_SetMainQuickBagSlot {
+  QuickBagSlot slot = 1;
+}
+
+message S2C_Bag_SetMainQuickBagSlot {
+  
+}
+
+// ------------------------------- Notify -------------------------------
+
+// 通知物品更新
+message S2C_Bag_UpdateItem {
+  repeated ItemData items = 1;
+}
+
+// 通知主 UI 中，左侧插槽发生变化
+message S2C_Bag_UpdateMainQuickBagSlot {
+  QuickBagSlot slot = 1;
+}

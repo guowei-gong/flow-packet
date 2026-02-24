@@ -25,7 +25,14 @@ export async function getConnectionStatus() {
 // Proto 管理
 export async function uploadProtoFiles(files: File[]) {
   const formData = new FormData()
-  files.forEach((f) => formData.append('files', f))
+  files.forEach((f) => {
+    formData.append('files', f)
+    // webkitRelativePath 格式: "选择的文件夹名/子路径/file.proto"
+    // 保留完整路径（含文件夹名），因为 proto import 可能引用该文件夹名
+    // 单独发送 paths 字段，因为 FormData filename 参数中的路径分隔符不可靠
+    const relPath = (f as File & { webkitRelativePath?: string }).webkitRelativePath
+    formData.append('paths', relPath ? relPath.replace(/\\/g, '/') : f.name)
+  })
 
   const resp = await fetch(`${API_BASE()}/api/proto/upload`, {
     method: 'POST',

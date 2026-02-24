@@ -1,0 +1,73 @@
+syntax = "proto3";
+package pb;
+option go_package = "/pb";
+
+//格式： C2S/S2C_CMD_ACT
+import "source/DataStruct.proto";
+
+// 进入副本
+message C2S_Dungeon_Enter {
+    int32 dungeonID = 1;
+}
+
+message S2C_Dungeon_Enter {
+    CurDungeon curDungeon = 1;
+}
+
+// 获取副本中玩家的位置
+message C2S_Dungeon_GetTransform {
+ 
+}
+
+message S2C_Dungeon_GetTransform {
+    TransformData dungeonTransform = 1;
+}
+
+// 副本位置同步
+message C2S_Dungeon_SyncTransform {
+    TransformData dungeonTransform = 1;
+}
+
+message S2C_Dungeon_SyncTransform {
+
+}
+
+// 副本复活
+message C2S_Dungeon_Rebirth {
+
+}
+
+message S2C_Dungeon_Rebirth {
+    int64 tpPointId = 1; // 传送点ID
+    bool hasTPPoint = 2; // 是否存在传送点
+}
+
+// 日常挑战副本结算
+message C2S_Dungeon_Settle {
+    bool rechallenge = 1; // 是否重新挑战
+    int32 dungeonID = 2; // 副本ID
+}
+
+message S2C_Dungeon_Settle {
+    bool rechallenge = 1; // 是否重新挑战
+    int32 worldID = 2;
+    TransformData transform = 3;
+}
+
+// 日常挑战副本目标完成
+message C2S_Dungeon_CompleteChallenge {
+}
+
+message S2C_Dungeon_CompleteChallenge {
+    bool challengeComplete = 1;
+}
+
+// 日常挑战副本领取奖励
+message C2S_Dungeon_Reward {
+    int32 multiplier = 1; // 倍数
+    int32 costItemId = 2; // 领取奖励消耗的物品 ID
+}
+
+message S2C_Dungeon_Reward {
+    repeated RewardData reward = 1;
+}

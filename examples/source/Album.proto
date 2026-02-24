@@ -1,0 +1,35 @@
+syntax = "proto3";
+package pb;
+option go_package = "/pb";
+
+//格式： C2S/S2C_CMD_ACT
+import "source/DataStruct.proto";
+import "source/Consts.proto";
+
+// 图鉴取消new标记
+message C2S_Album_ClearNewFlag {
+  int32 cfgId = 1;
+  AlbumType AlbumType = 2;
+}
+
+message S2C_Album_ClearNewFlag {
+  int32 cfgId = 1;
+  AlbumType AlbumType = 2;
+}
+
+// 图鉴取消解锁动效标记
+message C2S_Album_UnlockAction {
+  int32 cfgId = 1;
+  AlbumType AlbumType = 2;
+}
+
+message S2C_Album_UnlockAction {
+  int32 cfgId = 1;
+  AlbumType AlbumType = 2;
+}
+
+// 通知玩家图鉴更新
+message S2C_Album_AlbumUpdate {
+  AlbumType type = 1;
+  AlbumEntryData entry = 2;
+}

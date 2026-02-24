@@ -1,0 +1,31 @@
+syntax = "proto3";
+package pb;
+option go_package = "/pb";
+
+//格式： C2S/S2C_CMD_ACT
+import "source/DataStruct.proto";
+
+// 购买 NPC 商店物品
+message C2S_Npc_BuyItem {
+    int32 storeItemCfgId = 1; // 商店物品配置表主键
+    int32 count = 2; // 购买数量
+}
+
+message S2C_Npc_BuyItem {// 购买后的商品信息
+    repeated RewardData rewards = 1;
+}
+
+// 更新 NPC 对话记录
+message C2S_Npc_UpdateDialog {
+    string key = 1; // NPC 对话表主键
+    int32 npcId = 2; // NPC 配置表主键
+}
+
+message S2C_Npc_UpdateDialog {
+    string key = 1;
+}
+
+// 更新 npc 商店数据
+message S2C_Npc_UpdateStore {
+    repeated NpcStoreItemData npcStoreItems = 1;
+}

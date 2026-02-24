@@ -106,6 +106,75 @@ func ParseProtoFiles(paths []string) (*ParseResult, error) {
 	return result, nil
 }
 
+// ParseProtoDir 遍历 rootDir 目录树中所有 .proto 文件，以 rootDir 为 import path 统一编译。
+// 同时将所有包含 .proto 文件的父目录也加入 import paths，
+// 以兼容用户选择不同层级文件夹上传的情况。
+func ParseProtoDir(rootDir string) (*ParseResult, error) {
+	absRoot, err := filepath.Abs(rootDir)
+	if err != nil {
+		return nil, fmt.Errorf("resolve root dir: %w", err)
+	}
+
+	// 收集所有 .proto 文件的相对路径，以及它们的父目录
+	var relPaths []string
+	parentDirs := make(map[string]bool)
+	err = filepath.Walk(absRoot, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if !info.IsDir() && filepath.Ext(path) == ".proto" {
+			rel, err := filepath.Rel(absRoot, path)
+			if err != nil {
+				return err
+			}
+			// protocompile 需要正斜杠路径
+			relPaths = append(relPaths, filepath.ToSlash(rel))
+			// 记录包含 .proto 的目录（绝对路径）
+			parentDirs[filepath.Dir(path)] = true
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("walk proto dir: %w", err)
+	}
+
+	if len(relPaths) == 0 {
+		return &ParseResult{}, nil
+	}
+
+	// 构建 import paths：rootDir 优先，再加上所有包含 .proto 的目录
+	// 这样 import "source/X.proto" 既能从 rootDir 解析（source/ 是子目录），
+	// 也能从 .proto 文件所在目录解析（用户直接选了子文件夹上传的情况）
+	importPaths := []string{absRoot}
+	for dir := range parentDirs {
+		if dir != absRoot {
+			importPaths = append(importPaths, dir)
+		}
+	}
+
+	resolver := &protocompile.SourceResolver{
+		ImportPaths: importPaths,
+	}
+
+	compiler := &protocompile.Compiler{
+		Resolver: protocompile.WithStandardImports(resolver),
+	}
+
+	compiled, err := compiler.Compile(context.Background(), relPaths...)
+	if err != nil {
+		return nil, fmt.Errorf("compile proto dir: %w", err)
+	}
+
+	result := &ParseResult{}
+	for _, fd := range compiled {
+		fi := extractFileInfo(fd)
+		result.Files = append(result.Files, fi)
+		result.fileDescriptors = append(result.fileDescriptors, fd)
+	}
+
+	return result, nil
+}
+
 // ParseProtoReader 从 io.Reader 解析 proto 内容
 func ParseProtoReader(name string, reader io.Reader) (*ParseResult, error) {
 	content, err := io.ReadAll(reader)

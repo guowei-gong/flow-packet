@@ -1,0 +1,125 @@
+syntax = "proto3";
+package pb;
+option go_package = "/pb";
+
+import "source/DataStruct.proto";
+
+// 角色等级突破
+message C2S_Role_Breakthrough {
+  string role_id = 1;
+  repeated ConsumeItemData consume_items = 2;
+}
+message S2C_Role_Breakthrough {
+
+}
+
+// 切换角色收藏状态
+message C2S_Role_ToggleFavorite {
+  string role_id = 1;
+}
+message S2C_Role_ToggleFavorite {
+
+}
+
+// 角色升级
+message C2S_Role_LevelUp {
+  string role_id = 1;
+  repeated ConsumeItemData consume_items = 2;
+}
+message S2C_Role_LevelUp {
+  repeated ReturnRoleRemainExpData return_exp_items = 1; // 返还的经验道具
+}
+
+// 取消角色红点
+message C2S_Role_ClearRedDot {
+  string role_id = 1;
+  int32 clear_mask = 2;
+}
+message S2C_Role_ClearRedDot {
+  string role_id = 1;
+  int32 red_dot_mask = 2;
+}
+
+// 战斗技能升级
+message C2S_Role_SkillUp {
+  string role_id = 1;
+  int32 config_id = 2;
+  repeated ConsumeItemData consume_items = 3;
+}
+message S2C_Role_SkillUp {
+
+}
+
+// 分配加点
+message C2S_Role_AllocatePoint {
+  string role_id = 1;
+  map<int32, uint32> allocated_points = 2; // 待分配的加点，key 为二级属性ID（来自配置表），value 为分配的点数
+}
+message S2C_Role_AllocatePoint {
+
+}
+
+// 重置加点
+message C2S_Role_ResetPoint {
+  string role_id = 1;
+}
+message S2C_Role_ResetPoint {
+
+}
+
+// 激活角色潜能
+message C2S_Role_ActivatePotential {
+  string role_id = 1;
+  int32 config_id = 2;
+}
+message S2C_Role_ActivatePotential {
+
+}
+
+// 提升角色好感度
+message C2S_Role_IncrAffection {
+  string role_id = 1;
+  repeated ConsumeItemData consume_items = 2;
+}
+message S2C_Role_IncrAffection {
+  repeated RewardData rewards = 1;
+}
+
+// 领取角色好感度奖励
+message C2S_Role_ReceiveAffectionReward {
+  string role_id = 1;
+}
+message S2C_Role_ReceiveAffectionReward {
+  repeated RewardData rewards = 1;
+}
+
+// 更换角色皮肤
+message C2S_Role_EquipSkin {
+  string role_id = 1;
+  int32 skin_id = 2;
+}
+message S2C_Role_EquipSkin {
+
+}
+
+// 阅读角色日记
+message C2S_Role_ReadDiary {
+  string role_id = 1;
+  int32 config_id = 2;
+}
+message S2C_Role_ReadDiary {
+
+}
+
+// ------------------------------- 通知相关 -------------------------------
+
+// 角色更新
+message S2C_Role_UpdateRole {
+  repeated RoleData roles = 1;
+}
+
+// 角色红点更新
+message S2C_Role_UpdateRedDot {
+  string role_id = 1;
+  int32 red_dot_mask = 2;
+}

@@ -1,0 +1,183 @@
+syntax = "proto3";
+package pb;
+option go_package = "/pb";
+
+//格式： C2S/S2C_CMD_ACT
+import "source/DataStruct.proto";
+import "google/protobuf/wrappers.proto";
+
+// 激活星锚
+message C2S_World_ActivateAnchor {
+  int64 pointID = 1;
+}
+
+message S2C_World_ActivateAnchor {
+
+}
+
+// 激活重生锚点
+message C2S_World_ActivateRespawnPoint {
+  int64 pointID = 1;
+}
+
+message S2C_World_ActivateRespawnPoint {
+  
+}
+
+// 靠近怪物
+message C2S_World_ApproachMonster{
+  int64 cfgID = 1;
+}
+
+message S2C_World_ApproachMonster{
+
+}
+
+// 使用星锚
+message C2S_World_UseAnchor {
+  int64 pointID = 1;
+}
+
+message S2C_World_UseAnchor {
+
+}
+
+// 使用采集物资源点
+message C2S_World_UseCollectPoint {
+  int64 cfgID = 1;
+}
+
+message S2C_World_UseCollectPoint {
+  repeated RewardData reward = 1;
+}
+
+// 使用破坏物资源点
+message C2S_World_UseBrokenPoint {
+  int64 cfgID = 1;
+}
+
+message S2C_World_UseBrokenPoint {
+  int64 cfgID = 1;
+  repeated RewardData rewards = 2;
+}
+
+// 使用宝箱资源点
+message C2S_World_OpenTreasureBox {
+  int64 cfgID = 1;
+}
+
+message S2C_World_OpenTreasureBox {
+  int64 cfgID = 1;
+  repeated RewardData rewards = 2;
+}
+
+// 击杀怪物
+message C2S_World_KillMonster {
+  int64 cfgID = 1;
+}
+
+message S2C_World_KillMonster {
+  repeated RewardData rewards = 1;
+}
+
+// 获取大世界中玩家的位置
+message C2S_World_GetWorldTransform {
+ 
+}
+
+message S2C_World_GetWorldTransform {
+  TransformData worldTransform = 1;
+}
+
+// 大世界位置同步
+message C2S_World_SyncWorldTransform {
+  TransformData worldTransform = 1;
+}
+
+message S2C_World_SyncWorldTransform {
+
+}
+
+// 复活
+message C2S_World_WorldRebirth {
+  
+}
+
+message S2C_World_WorldRebirth {
+  int64 tpPointID = 1; // 传送点ID
+  google.protobuf.BoolValue hasTPPoint = 2; // 是否存在传送点
+}
+
+// 只有开关两种状态的机关交互（例如开关门，开关灯）
+message C2S_World_InteractSwitch {
+  int64 cfgID = 1;
+}
+
+message S2C_World_InteractSwitch {
+  int64 cfgID = 1;
+}
+
+// 解锁区域
+message C2S_World_UnlockRegion {
+  int32 regionID = 1;
+}
+
+message S2C_World_UnlockRegion {
+
+}
+
+// 领取收集物奖励
+message C2S_World_CollectReward {
+  int32 collectionID = 1; // MapCollection 表主键
+  int32 subCondition = 2;
+}
+
+
+message S2C_World_CollectReward {
+  repeated RewardData rewards = 1;
+}
+
+// 交互闪光点
+message C2S_World_UseLightPoint {
+  int64 instanceID = 1;
+}
+
+message S2C_World_UseLightPoint {
+  repeated RewardData reward = 1;
+}
+
+// 到达区块
+message C2S_World_ArriveBlock {
+  int32 blockID = 1;
+}
+
+
+message S2C_World_ArriveBlock {
+
+}
+
+// 调整世界等级
+message C2S_World_AdjustWorldLevel {
+  bool levelUp = 1; // true: 升级 false: 降级
+}
+
+message S2C_World_AdjustWorldLevel {
+  int32 worldLv = 1; // 变化后世界等级
+}
+// ------------------------------ Notify ------------------------------
+
+// 实例更新通知
+message S2C_World_UpdateInstance {
+  repeated InstanceData instances = 1;
+}
+
+// 世界数据更新
+message S2C_World_UpdateWorld {
+  WorldData newData = 1;
+}
+
+// 世界等级突破通知
+message S2C_World_UpdateWorldLv{
+  int32 max_world_lv = 1;
+  int32 cur_world_lv = 2;
+}

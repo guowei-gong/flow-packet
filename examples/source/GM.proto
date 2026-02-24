@@ -1,0 +1,62 @@
+syntax = "proto3";
+package pb;
+option go_package = "/pb";
+
+//格式： C2S/S2C_CMD_ACT
+import "source/DataStruct.proto";
+
+// 登录
+message C2S_GM_Login {
+  string username = 1;
+  string password = 2;
+}
+
+message S2C_GM_Login {
+  string status = 1;
+  string currentAuthority = 2; // 当前权限
+  string token = 3;
+}
+
+// 退出登录
+message C2S_GM_Logout {}
+
+message S2C_GM_Logout {}
+
+// 获取当前用户
+message C2S_GM_GetCurrentUser {}
+
+message S2C_GM_GetCurrentUser {
+  string userid = 1;
+  string name = 2;
+  string avatar = 3;
+  string email = 4;
+  string access = 5;
+}
+
+// 创建管理员
+message C2S_GM_CreateAdmin {
+  string username = 1;
+  string password = 2;
+  string name = 3;
+  string email = 4;
+  string remark = 5;
+  string access = 6;
+}
+
+message S2C_GM_CreateAdmin {}
+
+// GM Node 和 Game Node 之间的通信
+service GM{
+  // 执行 GM 指令
+  rpc RunCommand(C2S_GM_RunCommand) returns (S2C_GM_RunCommand) {}
+}
+
+message C2S_GM_RunCommand {
+  int32 cmd = 1;
+  string params = 2;
+  string uid = 3;
+}
+
+message S2C_GM_RunCommand {
+  string info = 1;
+}

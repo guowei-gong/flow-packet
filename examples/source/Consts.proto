@@ -1,0 +1,73 @@
+syntax = "proto3";
+package pb;
+option go_package = "/pb";
+
+// 道具被谁使用
+enum ItemUsedType {
+  MustUsedType = 0; // 没有被使用
+
+  ITEM_USED_TYPE_ROLE = 1; // 被角色使用
+  ITEM_USED_TYPE_BAG = 2; // 被快捷背包使用
+}
+
+// 道具排序
+enum ItemSortType {
+  MustSort = 0;
+
+  ITEM_SORT_DEF = 1 ; // 默认
+  ITEM_SORT_RARE = 2; // 稀有度
+  ITEM_SORT_LEVEL = 3; // 等级
+  ITEM_SORT_GET_TIME = 4; // 获取时间
+}
+
+// 技能类型
+enum RoleSkillType {
+  MustRoleSkill = 0;
+
+  ROLE_SKILL_ACTTACK = 1; // 普攻
+  ROLE_SKILL_ACTIVE = 2; // 主动技能
+  ROLE_SKILL_ULTIMATE = 3; // 爆发技能（大招）
+  ROLE_SKILL_SUPPORT = 4; // 支援技能
+  ROLE_SKILL_TALENT = 5; // 天赋技能
+}
+
+// 背包过滤条件类型
+enum BagFilterCondType {
+  BAG_FILTER_COND_NONE = 0;
+  BAG_FILTER_COND_RARITY = 1;     // 稀有度
+  BAG_FILTER_COND_REFINE = 2;     // 炙练等级
+  BAG_FILTER_COND_ATTRIBUTE = 3;  // 属性
+  BAG_FILTER_COND_LOCKED = 4;     // 是否锁定
+  BAG_FILTER_COND_WEAPON_TYPE = 5; // 武器类型
+}
+
+enum AlbumType{
+  NULl = 0; // 占位
+  BIOLOGY = 1; // 生物图鉴
+  WORD = 2; // 名词
+  LANDSCAPE = 3; // 风景
+}
+
+enum AlbumUnlockStage{
+  STAGE_NULL = 0;
+  LOCKED = 1;
+  UNLOCK = 2;
+  DETAIL_UNLOCK = 3;
+}
+
+// 任务删除原因
+enum TaskDelReason{
+  NULL = 0;
+  COMPLETE = 1;
+  TIMEOUT = 2;
+}
+
+// 快捷背包插槽
+enum QuickBagSlot {
+  QUICK_BAG_SLOT_NONE = 0;
+  QUICK_BAG_SLOT_1 = 1;
+  QUICK_BAG_SLOT_2 = 2;
+  QUICK_BAG_SLOT_3 = 3;
+  QUICK_BAG_SLOT_4 = 4;
+  QUICK_BAG_SLOT_5 = 5;
+}

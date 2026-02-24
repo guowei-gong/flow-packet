@@ -1,0 +1,441 @@
+syntax = "proto3";
+package pb;
+option go_package = "/pb";
+
+import "source/Consts.proto";
+
+message Vector3Data {
+  float x = 1;
+  float y = 2;
+  float z = 3;
+}
+
+message AccountData {
+  string accountId = 1;
+  string playerId = 2;
+  string telephone = 3;
+  string password = 4;
+  int32 status = 5;
+  string createTime = 6;
+  string lastLoginTime = 7;
+}
+
+message AdminData {
+  string name = 1; // 用户名
+  string password = 2;
+  string access = 3; // 权限
+  string avatar = 4;
+  string status = 5; // 状态 stop:禁用, ok:启用
+  string email = 6;
+  string remark = 7;
+  int64 lastLoginTime = 8;
+  int64 createTime = 9;
+  int64 updateTime = 10;
+}
+
+message AttrData {
+  int32 config_id = 1;
+  int32 value = 2;
+}
+
+message RoleData {
+  string id = 1;
+  int32 config_id = 2;
+  string player_id = 3;
+
+  map<int32, AttrData> attrs = 4;
+  map<int32, RoleSkillData> skills = 5;
+
+  RoleGrowthData growth = 6;
+  RoleStatusData status = 7;
+
+  int32 equipped_skin_id = 8; // 当前使用的皮肤
+  string equipped_weapon_id = 9; // 当前使用的武器
+  int64 create_time = 10; // 获取时间，毫秒时间戳
+
+  repeated RoleDiaryData diaries = 11;
+  repeated RoleSkinData skins = 12;
+  repeated RoleVoiceData voices = 13;
+}
+
+// 角色好感度
+message RoleAffectionData {
+  int32 level = 1;
+  int32 exp = 2; // 当前经验值
+  repeated int32 collected_reward_lv = 3; // 已经领取过好感度奖励的等级
+}
+
+// 角色日记条目
+message RoleDiaryData {
+  int32 config_id = 1;
+  int32 status = 2; 
+}
+
+// 角色成长数据
+message RoleGrowthData {
+  optional int32 exp = 1; // 经验
+  int32 level = 2; // 等级
+  int32 level_stage = 3; // 当前等级阶段
+
+  RolePointData point_data = 4;
+  RoleAffectionData affection = 5;
+  repeated RolePotentialData potentials = 6;
+}
+
+// 角色潜能数据
+message RolePotentialData {
+  int32 config_id = 1;
+  int32 status = 2;
+}
+
+// 角色技能数据
+message RoleSkillsData {
+  map<int32, RoleSkillData> fight_skills = 1; // 战斗技能
+}
+
+// 角色状态数据
+message RoleStatusData {
+  int32 is_red_dot = 1; // 红点位掩码
+  bool is_favorited = 2; // 是否收藏角色，TRUE 已收藏
+}
+
+// 角色皮肤数据
+message RoleSkinData {
+  int32 config_id = 1;
+  int32 status = 2; // 枚举配置表
+}
+
+// 角色技能
+message RoleSkillData {
+  int32 level = 1; // 技能等级
+}
+
+// 角色加点数据
+message RolePointData {
+  optional uint32 available_points = 1; // 可用加点数
+  map<int32, uint32> allocated_points = 2; // 已分配点数，key 对应枚举配置表中的二级属性 ID
+  int64 last_reset_time = 3; // 上次重置时间，毫秒时间戳
+  uint32 daily_reset_count = 4; // 当日重置次数
+}
+
+// 角色语音条目
+message RoleVoiceData {
+  int32 config_id = 1;
+  bool is_unlocked = 2; // 是否已解锁
+}
+
+message TeamData {
+  int32 index = 1;
+  string name = 2;
+  repeated string roles = 3;
+}
+
+message PlayerData {
+  string id = 1;
+  string name = 2;
+  bool sexuality = 3; 
+  repeated string roles = 4;
+  repeated TeamData teams = 5;
+  int32 localTeamIndex = 6;
+  repeated QuickBagData quickBag = 7; // 快捷背包
+  TrackTaskData trackTask = 8; // 追踪的任务数据
+  map<int32, TaskList> tasks = 9; // 任务, key 为任务类型
+  map<int32, string> flags = 10; // 标记, key 为标记类型
+  int32 playerLv = 11;  // 玩家等级
+  map<string, bool> npcDialogs= 12; // NPC 对话记录
+  map<int32, CollectionList> collections = 13; // 收集进度, key 为区域id
+  CurDungeon curDungeon = 14; // 玩家当前所在的副本信息
+  int64 respawn_point = 15; // 重生锚点，用于编队全部阵亡后在哪里复活
+  repeated MarkPointData marks = 16; // 标记点列表
+  TraceMarkData traceMark = 17; // 追踪的标记点数据
+  VigorData vigorData = 18; // 玩家体力相关业务数据
+  QuickBagSlot main_quick_bag_slot = 19; // 主 UI 中，能量条左侧的插槽
+  map<int32, TaskData> completeTasks = 20; // 已完成的任务，key 为任务配置表主键
+  int64 login_out_timeMs = 21; // 玩家上次离线时间
+} 
+
+// 物品
+message ItemData {
+  string id = 1; // 主键
+  int32 cfgId = 2; // 物品表 id
+  optional int32 count = 3; // 数量
+  int64 getMs = 4; // 获得时间，毫秒时间戳
+  int64 clearMs = 5; // 过期毫秒时间戳。大于一天按天数显示，小于一天按小时显示，小于一小时按分钟显示
+  bool locked = 6; // 锁定状态
+  int32 lvl = 7; // 物品等级，物品没有等级，该字段为 0
+  ItemUsedType usedType = 8; // 道具被谁使用
+  string usedId = 9; // 道具被哪个ID使用。如果道具被角色使用，该字段为角色ID
+  repeated ItemAttribute attrs = 10; // 物品属性
+  int32 rarity = 11; // 稀有度
+  PropData propData = 12; // 战斗道具额外属性
+  WeaponData weaponData = 13; // 武器额外属性
+}
+
+// 物品属性
+message ItemAttribute {
+  int32 attr = 1; // 从配置表获取详细信息
+  int32 value = 2;
+}
+
+// 战斗道具物品
+message PropData {
+  int32 cfgId = 1;
+  int64 cd = 2; // 下一次使用时间，毫秒时间戳
+}
+
+// 武器物品
+message WeaponData {
+  string id = 1;
+  int32 cfgId = 2;
+  int32 exp = 4;
+  int32 lvlStage = 5;
+  int32 potential = 6;
+}
+
+// 任务
+message TaskData {
+  int32 cfgId = 1; // 任务配置表ID
+  int32 subtaskId = 2; // 子任务ID
+  int64 startMs = 3; // 任务开始时间，毫秒时间戳
+  bool unlock = 4; // 任务是否解锁
+  bool redDot = 5; // 是否显示红点
+  repeated TaskConditionData conditions = 6; // 子任务目标
+}
+
+// 任务目标
+message TaskConditionData {
+  int32 cfgId = 1; // 任务目标表ID
+  int32 count = 2; // 已完成次数
+  bool finished = 3; // 是否完成
+}
+
+// 任务列表
+message TaskList {
+  repeated TaskData tasks = 1;
+}
+
+// 交付任务道具
+message SubmitTaskItem {
+  string itemId = 1;
+  int32 count = 2;
+}
+
+// 已完成任务
+message CompletedTask {
+  string playerId = 1;
+  map<int32, TaskData> tasks = 2; // key 为任务配置表主键
+}
+
+// 物品回收
+message RecycleItemDetail {
+  string id = 1;
+  int32 count = 2;
+}
+
+// 保底计数
+message PlayerPityData {
+  string playerId = 1;
+  map<int32,int32> counts = 2; // 当前计数, key: DropPity 表主键, value: 当前计数
+  map<int32,int32> targets = 3; // 目标计数, key: DropPity 表主键, value: 目标计数
+  map<int32,int32> triggers = 4; // 已触发次数, key: DropPity 表主键, value: 已触发次数
+}
+
+message NpcStoreData {
+  string playerId = 1;
+  map<int32,NpcStore> stores = 2;// 商店列表
+}
+
+message NpcStore {
+  int32 storeID = 1;
+  repeated NpcStoreItemData storeItems = 2;// key:npcStoreItem 表主键, value: 已购买次数
+  int64 nextRefreshTime = 3; // 下次刷新时间，为 0 不刷新
+}
+
+message NpcStoreItemData {
+  int32 npcStoreItemId = 1;
+  int32 buyCount = 2;
+}
+
+
+// 标记点信息
+message MarkPointData {
+  string markId = 1; //玩家自定义标识的实例id
+  int32 type = 2; // 标记点类型
+  Vector3Data position = 3;
+  string name = 4;
+  int64 createTime = 5;
+  int32 levelId = 6; // 关卡id
+}
+
+message PlayerMapData {
+  string playerID = 1;
+  repeated MarkPointData marks = 2; // 标记点列表
+}
+
+// 区域数据
+message MapRegionData {
+  map<int32, int32> collection = 1; // key: 收集品类型（enum 表 MapCollectionType） value：已收集数量
+  repeated int64 arrivedBlocks = 2; // 已到达的区块
+}
+
+// 世界资源实例
+message InstanceData {
+  int64 cfgID = 1; // 实例配置表主键
+  // 功能组件
+  oneof InstanceType {
+    InstanceNormal normal = 2; // 普通实例
+    InstanceMonster monster = 3; // 怪物实例
+  }
+}
+
+// InstanceNormal 通用实例状态
+message InstanceNormal {
+  bool is_active = 1; // 通用激活状态
+}
+
+// InstanceMonster 怪物实例状态
+message InstanceMonster {
+  int64 used_at = 1; // 上一次被使用时间
+  bool discovered = 2; // 是否已发现（点亮图鉴）
+}
+
+message RewardData {
+  int32 itemCfgID = 1;
+  int32 count = 2;
+  bool isExtra = 3; // 是否为额外奖励
+}
+
+// 收集列表
+message CollectionList {
+  repeated CollectionData collections = 1;
+}
+
+// 收集进度
+message CollectionData {
+  int32 cfgIg = 1; // 地图收集表主键
+  int32 count = 2; // 已收集资源数量
+}
+
+// 定时器
+message PlayerTimerData {
+  string playerId = 1; // 玩家ID
+  map<int32, TimerData> timers = 2; // 定时器列表, key 为定时器配置表主键
+  map<int32, int32> times = 3; // 定时器执行次数统计, key 为定时器配置表主键, value 为当前执行次数
+}
+
+message TimerData {
+  int32 cfgId = 1; // 定时器配置表主键
+  int64 startMs = 2; // 开始时间，毫秒时间戳
+  int32 status = 3; // 状态，1：进行中，2：已结束
+  int32 relationTable = 4; // 关联表，1：Timer_Level 表
+  int64 relationCfgId = 5; // 关联表主键
+  int64 groupId = 7; // 组别，业务使用
+  int32 timerType = 8; // 定时器类型，不是配置表中的类型。1：一次性定时器，2：循环定时器
+}
+
+// 位置
+message TransformData {
+  Vector3Data position = 1; // 坐标
+  float yaw = 2; // 朝向
+}
+
+// 玩家位置
+message PlayerTransformData {
+  string playerId = 1;
+  TransformData worldTransform = 2; // 大世界位置
+  TransformData dungeonTransform = 3; // 副本位置
+}
+
+// 角色属性
+message RoleAttrData {
+  string roleId = 1;
+  repeated AttrData attrs = 2;
+}
+
+// 玩家当前所在副本信息
+message CurDungeon {
+  int32 id = 1; // 副本id
+  bool challengeComplete = 2; // 是否完成挑战
+}
+
+// 大世界信息
+message WorldData {
+  string playerID = 1;
+  int32 id = 2; // 当前大世界id
+  int32 cur_world_lv = 3;  // 玩家当前世界等级
+  int32 max_world_lv = 4; // 玩家历史最高世界等级
+  map<int64, InstanceData> instances = 5; // 实例列表
+  map<int32, MapRegionData> regionData = 6; // key: regionID
+  int64 last_adjust_level_time = 7; // 玩家上次调整等级时间
+  repeated int32 unlockZone = 8 ;// 玩家已解锁的二级区域
+  map<int32, RewardList> receivedReward = 9 ; // 已领取的收集品奖励 map. key: MapCollection表主键 v:已领取过的奖励列表
+  int32 currency = 10; // 玩家今天通过大世界杀怪已经获得的金币数量
+}
+
+// 奖励列表
+message RewardList {
+  repeated int32 rewards = 1;
+}
+
+// 背包信息
+message BagData {
+  string playerId = 1;
+  map<string, ItemData> items = 2; // key 为物品id
+}
+
+message AlbumEntryData{
+  int32 cfgId = 1;
+  int32 stage = 2;// 激活阶段 0：未激活,1：解锁,2：详情解锁,...
+  bool newFlag = 3;// 是否显示新
+  bool unlockAction = 4 ;// 完全解锁动效
+}
+
+message AlbumEntryList{
+  repeated AlbumEntryData AlbumEntries = 1;
+}
+
+message AlbumData{
+  string playerId  = 1;
+  map<int32, AlbumEntryList> Album = 2;// key 图鉴类型：Const中的 AlbumType
+}
+
+// 快捷背包数据
+message QuickBagData {
+  string itemId = 1; // 背包中的物品ID, 为空代表背包已无此物品
+  int32 itemCfgId = 2; // 物品配置表主键
+  QuickBagSlot slot = 3; // 插槽位置
+}
+
+message TraceMarkData {
+  string id = 1; // 实例id/配置表id
+  int32 type = 2;// 标记类型
+  int64 traceTime = 3;
+}
+
+message TrackTaskData{
+  int32 taskId = 1;
+  int32 subtaskId = 2;
+  int32 condId = 3;
+  int64 trackingTaskMs = 4;
+}
+
+// 通用消耗道具数据
+message ConsumeItemData {
+  string id = 1;
+  int32 count = 2;
+}
+
+// 体力系统数据
+message VigorData {
+  int64 lastRecoverTime = 1; // 体力或底力最新一次回复的时间
+  int32 buyCount = 2; // 当天购买体力的次数
+  int64 refreshTimeMs = 3;
+  int32 vigorCount = 4; // 玩家体力数量
+  int32 spareVigorCount = 5; // 玩家底力数量
+}
+
+// 角色升级返还的溢出经验道具
+message ReturnRoleRemainExpData {
+  int32 cfgID = 1;
+  int32 count = 2;
+}

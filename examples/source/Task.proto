@@ -1,0 +1,98 @@
+syntax = "proto3";
+package pb;
+option go_package = "/pb";
+
+//格式： C2S/S2C_CMD_ACT
+
+import "source/DataStruct.proto";
+import "source/Consts.proto";
+
+// 领取任务
+message C2S_Task_Add {
+    int32 taskId = 1; // 主任务ID
+}
+
+message S2C_Task_Add {
+    int32 taskId = 1;
+}
+
+// 取消任务红点
+message C2S_Task_DelRedDot {
+    int32 taskId = 1;
+}
+
+message S2C_Task_DelRedDot {
+    int32 taskId = 1;
+}
+
+// 追踪任务，Id 为 0 时代表取消当前追踪的任务
+message C2S_Task_Track {
+    int32 taskId = 1;
+    int32 subTaskId = 2;
+    int32 condId = 3;
+}
+
+message S2C_Task_Track {
+    TrackTaskData trackTask = 1;
+}
+
+// 交付任务道具
+message C2S_Task_SubmitItem {
+    int32 taskId = 1;
+    repeated SubmitTaskItem submitItems = 2;
+}
+
+message S2C_Task_SubmitItem {
+
+}
+
+// 获取已完成任务
+message C2S_Task_GetCompleted {
+
+}
+
+message S2C_Task_GetCompleted {
+    map<int32, TaskData> tasks = 1;
+}
+
+// 主动完成任务进度
+message C2S_Task_CompleteCond {
+    int32 condId = 1; // 任务条件ID
+    int32 condType = 2; // 任务完成类型： subtaskCondition表
+}
+
+message S2C_Task_CompleteCond {
+    TrackTaskData trackTask = 1; // 更新的追踪任务数据
+    repeated RewardData rewards = 2;
+}
+
+// ------------------------------- 通知相关 -------------------------------
+
+// 新增任务通知
+message S2C_Task_New {
+    repeated TaskData tasks = 1;
+    optional TrackTaskData trackTask = 2;
+}
+
+// 删除任务通知
+message S2C_Task_Del {
+    repeated int32 taskIds = 1;
+    TaskDelReason reason = 2;
+    TrackTaskData trackTask = 3;
+}
+
+// 更新任务通知
+message S2C_Task_Update {
+    repeated TaskData tasks = 1;
+    optional TrackTaskData trackTask = 2;
+}
+
+// 任务满足解锁条件通知
+message S2C_Task_Unlock {
+    int32 taskId = 1;
+}
+
+// 任务满足开启条件通知
+message S2C_Task_Open {
+    int32 taskId = 1;
+}

@@ -1,0 +1,11 @@
+syntax = "proto3";
+package pb;
+option go_package = "/pb";
+
+message C2S_Benchmark_Greet {
+    string message = 1;
+}
+
+message S2C_Benchmark_Greet {
+    string message = 1;
+}
