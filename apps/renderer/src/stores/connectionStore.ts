@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import type { FrameField } from '@/types/frame'
 
 export type ConnState = 'disconnected' | 'connecting' | 'connected' | 'reconnecting'
 
@@ -15,10 +16,12 @@ interface ConnectionStore {
   state: ConnState
   config: ConnectionConfig
   targetAddr: string
+  routeFields: FrameField[]
 
   setState: (state: ConnState) => void
   setConfig: (config: Partial<ConnectionConfig>) => void
   setTargetAddr: (addr: string) => void
+  setRouteFields: (fields: FrameField[]) => void
 }
 
 export const useConnectionStore = create<ConnectionStore>((set) => ({
@@ -32,9 +35,11 @@ export const useConnectionStore = create<ConnectionStore>((set) => ({
     heartbeat: true,
   },
   targetAddr: '',
+  routeFields: [],
 
   setState: (state) => set({ state }),
   setConfig: (config) =>
     set((s) => ({ config: { ...s.config, ...config } })),
   setTargetAddr: (addr) => set({ targetAddr: addr }),
+  setRouteFields: (fields) => set({ routeFields: fields }),
 }))

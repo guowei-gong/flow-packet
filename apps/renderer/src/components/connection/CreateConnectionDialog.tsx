@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Loader2, Plus, Trash2, Github, ChevronRight, ChevronLeft, Box } from 'lucide-react'
+import { Loader2, Plus, Trash2, Github, ChevronRight, ChevronLeft, Box, Ellipsis, Route, Hash } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   Dialog,
@@ -36,11 +36,18 @@ import {
   type SavedConnection,
 } from '@/stores/savedConnectionStore'
 import { connectTCP, disconnectTCP } from '@/services/api'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
 import {
   FRAME_TEMPLATES,
   loadCustomTemplates,
   saveCustomTemplate,
+  formatFramePreview,
   type FrameField,
   type FrameConfig,
 } from '@/types/frame'
@@ -69,10 +76,6 @@ function StepIndicator({ step }: { step: number }) {
       ))}
     </div>
   )
-}
-
-function formatFramePreview(fields: FrameField[]) {
-  return fields.map((f) => `${f.name}(${f.bytes}B)`).join(' + ')
 }
 
 export function CreateConnectionDialog({
@@ -221,7 +224,7 @@ export function CreateConnectionDialog({
     setCustomFields(customFields.filter((_, i) => i !== index))
   }
 
-  const handleFieldChange = (index: number, key: keyof FrameField, value: string | number) => {
+  const handleFieldChange = (index: number, key: keyof FrameField, value: string | number | boolean) => {
     setCustomFields(customFields.map((f, i) =>
       i === index ? { ...f, [key]: value } : f
     ))
@@ -437,7 +440,15 @@ export function CreateConnectionDialog({
             <CardContent>
               <div className="flex flex-col gap-3">
                 {customFields.map((field, i) => (
-                  <div key={i} className="flex items-center gap-2">
+                  <div
+                    key={i}
+                    className={cn(
+                      'flex items-center gap-2 rounded-md pl-2 border-l-2 transition-colors',
+                      field.isRoute ? 'border-l-primary bg-primary/5'
+                        : field.isSeq ? 'border-l-amber-500 bg-amber-500/5'
+                        : 'border-l-transparent'
+                    )}
+                  >
                     <Input
                       className="flex-1"
                       placeholder="字段名"
@@ -455,15 +466,39 @@ export function CreateConnectionDialog({
                       />
                       <span className="text-sm text-muted-foreground w-3">B</span>
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="shrink-0 h-8 w-8"
-                      disabled={customFields.length <= 1}
-                      onClick={() => handleRemoveField(i)}
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="shrink-0 h-8 w-8">
+                          <Ellipsis className="h-3.5 w-3.5" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="min-w-28">
+                        <DropdownMenuItem onClick={() => {
+                          const newFields = [...customFields]
+                          newFields[i] = { ...newFields[i], isRoute: !field.isRoute, isSeq: false }
+                          setCustomFields(newFields)
+                        }}>
+                          <Route className="h-3.5 w-3.5" />
+                          {field.isRoute ? '取消路由' : '标记路由'}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => {
+                          const newFields = [...customFields]
+                          newFields[i] = { ...newFields[i], isSeq: !field.isSeq, isRoute: false }
+                          setCustomFields(newFields)
+                        }}>
+                          <Hash className="h-3.5 w-3.5" />
+                          {field.isSeq ? '取消序号' : '标记序号'}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          disabled={customFields.length <= 1}
+                          onClick={() => handleRemoveField(i)}
+                          className="text-destructive focus:text-destructive"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                          删除
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                 ))}
                 <Button

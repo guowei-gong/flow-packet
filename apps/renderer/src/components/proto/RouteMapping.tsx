@@ -4,24 +4,33 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { useProtoStore, type RouteMapping as RouteMappingType } from '@/stores/protoStore'
+import { useConnectionStore } from '@/stores/connectionStore'
+import { combineRoute, splitRoute } from '@/types/frame'
 import { setRouteMapping, deleteRouteMapping } from '@/services/api'
 
 export function RouteMapping() {
   const mappings = useProtoStore((s) => s.routeMappings)
   const addMapping = useProtoStore((s) => s.addRouteMapping)
   const removeMapping = useProtoStore((s) => s.removeRouteMapping)
+  const routeFields = useConnectionStore((s) => s.routeFields)
+  const hasRouteFields = routeFields.length > 0
+
   const [newRoute, setNewRoute] = useState('')
+  const [newRouteValues, setNewRouteValues] = useState<Record<string, number>>({})
   const [newReqMsg, setNewReqMsg] = useState('')
   const [newRespMsg, setNewRespMsg] = useState('')
 
   const handleAdd = async () => {
-    const route = parseInt(newRoute)
+    const route = hasRouteFields
+      ? combineRoute(newRouteValues, routeFields)
+      : parseInt(newRoute)
     if (!route || !newReqMsg) return
 
     try {
       await setRouteMapping(route, newReqMsg, newRespMsg)
       addMapping({ route, requestMsg: newReqMsg, responseMsg: newRespMsg })
       setNewRoute('')
+      setNewRouteValues({})
       setNewReqMsg('')
       setNewRespMsg('')
     } catch (err) {
@@ -42,13 +51,28 @@ export function RouteMapping() {
     <div className="flex flex-col gap-2 p-2">
       <div className="space-y-1">
         <div className="flex items-center gap-1">
-          <Input
-            placeholder="Route"
-            value={newRoute}
-            onChange={(e) => setNewRoute(e.target.value)}
-            className="h-6 text-xs w-14 shrink-0"
-            type="number"
-          />
+          {hasRouteFields ? (
+            routeFields.map((rf) => (
+              <Input
+                key={rf.name}
+                placeholder={rf.name}
+                value={newRouteValues[rf.name] ?? ''}
+                onChange={(e) =>
+                  setNewRouteValues({ ...newRouteValues, [rf.name]: Number(e.target.value) || 0 })
+                }
+                className="h-6 text-xs w-14 shrink-0"
+                type="number"
+              />
+            ))
+          ) : (
+            <Input
+              placeholder="Route"
+              value={newRoute}
+              onChange={(e) => setNewRoute(e.target.value)}
+              className="h-6 text-xs w-14 shrink-0"
+              type="number"
+            />
+          )}
           <Input
             placeholder="请求 Message"
             value={newReqMsg}
@@ -85,10 +109,20 @@ function MappingRow({
   mapping: RouteMappingType
   onDelete: (route: number) => void
 }) {
+  const routeFields = useConnectionStore((s) => s.routeFields)
+  const hasRouteFields = routeFields.length > 0
+
+  const routeDisplay = hasRouteFields
+    ? (() => {
+        const values = splitRoute(mapping.route, routeFields)
+        return routeFields.map((rf) => `${rf.name}:${values[rf.name] ?? 0}`).join(' ')
+      })()
+    : String(mapping.route)
+
   return (
     <div className="flex items-center gap-1 py-0.5 text-xs">
-      <span className="w-12 shrink-0 font-mono" style={{ color: 'var(--pin-int)' }}>
-        {mapping.route}
+      <span className="shrink-0 font-mono" style={{ color: 'var(--pin-int)' }}>
+        {routeDisplay}
       </span>
       <span className="flex-1 truncate text-foreground">
         {mapping.requestMsg}

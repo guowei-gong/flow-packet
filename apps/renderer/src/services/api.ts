@@ -10,6 +10,7 @@ export async function connectTCP(host: string, port: number, options?: {
   timeout?: number
   reconnect?: boolean
   heartbeat?: boolean
+  frameFields?: { name: string; bytes: number; isRoute?: boolean; isSeq?: boolean }[]
 }) {
   return sendRequest('conn.connect', { host, port, ...options })
 }
@@ -28,8 +29,7 @@ export async function uploadProtoFiles(files: File[]) {
   files.forEach((f) => {
     formData.append('files', f)
     // webkitRelativePath 格式: "选择的文件夹名/子路径/file.proto"
-    // 保留完整路径（含文件夹名），因为 proto import 可能引用该文件夹名
-    // 单独发送 paths 字段，因为 FormData filename 参数中的路径分隔符不可靠
+    // 保留完整路径，因为文件夹名可能是 proto import 路径的一部分
     const relPath = (f as File & { webkitRelativePath?: string }).webkitRelativePath
     formData.append('paths', relPath ? relPath.replace(/\\/g, '/') : f.name)
   })
@@ -41,7 +41,11 @@ export async function uploadProtoFiles(files: File[]) {
 
   if (!resp.ok) {
     const err = await resp.json()
-    throw new Error(err.error || 'Upload failed')
+    const error = new Error(err.error || 'Upload failed') as Error & { missingImports?: string[] }
+    if (err.missingImports) {
+      error.missingImports = err.missingImports
+    }
+    throw error
   }
 
   return resp.json()

@@ -1,5 +1,7 @@
 import { useCanvasStore } from '@/stores/canvasStore'
 import { useProtoStore, type FieldInfo, type MessageInfo } from '@/stores/protoStore'
+import { useConnectionStore } from '@/stores/connectionStore'
+import { combineRoute, splitRoute } from '@/types/frame'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
@@ -18,6 +20,7 @@ export function FieldEditor({ nodeId }: FieldEditorProps) {
   const node = useCanvasStore((s) => s.nodes.find((n) => n.id === nodeId))
   const updateNodeData = useCanvasStore((s) => s.updateNodeData)
   const getMessageByName = useProtoStore((s) => s.getMessageByName)
+  const routeFields = useConnectionStore((s) => s.routeFields)
 
   if (!node) return null
 
@@ -36,16 +39,43 @@ export function FieldEditor({ nodeId }: FieldEditorProps) {
     })
   }
 
+  const routeValues = routeFields.length > 0
+    ? splitRoute(node.data.route ?? 0, routeFields)
+    : null
+
+  const handleRouteFieldChange = (fieldName: string, val: number) => {
+    if (!routeValues) return
+    const newValues = { ...routeValues, [fieldName]: val }
+    updateNodeData(nodeId, { route: combineRoute(newValues, routeFields) })
+  }
+
   return (
     <div className="grid gap-3">
-      <div className="grid gap-2">
-        <Label htmlFor={`route-${nodeId}`}>路由</Label>
-        <Input
-          id={`route-${nodeId}`}
-          value={node.data.route ?? 0}
-          onChange={(e) => updateNodeData(nodeId, { route: Number(e.target.value) })}
-        />
-      </div>
+      {routeFields.length > 0 ? (
+        <div className="grid gap-2">
+          <Label>路由</Label>
+          <div className="flex items-center gap-2">
+            {routeFields.map((rf) => (
+              <div key={rf.name} className="flex-1 grid gap-1">
+                <span className="text-xs text-muted-foreground uppercase">{rf.name}</span>
+                <Input
+                  value={routeValues?.[rf.name] ?? 0}
+                  onChange={(e) => handleRouteFieldChange(rf.name, Number(e.target.value) || 0)}
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <div className="grid gap-2">
+          <Label htmlFor={`route-${nodeId}`}>路由</Label>
+          <Input
+            id={`route-${nodeId}`}
+            value={node.data.route ?? 0}
+            onChange={(e) => updateNodeData(nodeId, { route: Number(e.target.value) })}
+          />
+        </div>
+      )}
 
       <Separator />
 

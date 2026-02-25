@@ -37,6 +37,11 @@ func NewTCPClient(cfg codec.PacketConfig) *TCPClient {
 	}
 }
 
+// SetPacketConfig 动态更新协议帧配置
+func (c *TCPClient) SetPacketConfig(cfg codec.PacketConfig) {
+	c.packetCfg = cfg
+}
+
 // SetReconnectConfig 设置重连配置
 func (c *TCPClient) SetReconnectConfig(cfg ReconnectConfig) {
 	c.reconnectCfg = cfg

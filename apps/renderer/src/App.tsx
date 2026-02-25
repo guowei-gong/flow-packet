@@ -15,6 +15,8 @@ import { LogPanel } from '@/components/execution/LogPanel'
 import { WelcomePage } from '@/components/connection/WelcomePage'
 import { initEventBindings } from '@/services/eventBindings'
 import { connect as wsConnect, setConnectionStatusCallback } from '@/services/ws'
+import { connectTCP } from '@/services/api'
+import { toast } from 'sonner'
 import { useTabStore } from '@/stores/tabStore'
 import { useCanvasStore, type RequestNodeData } from '@/stores/canvasStore'
 import { useProtoStore } from '@/stores/protoStore'
@@ -30,6 +32,7 @@ function App() {
   const addNode = useCanvasStore((s) => s.addNode)
   const routeMappings = useProtoStore((s) => s.routeMappings)
   const setConfig = useConnectionStore((s) => s.setConfig)
+  const setRouteFields = useConnectionStore((s) => s.setRouteFields)
 
   const onEmptyDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault()
@@ -93,14 +96,32 @@ function App() {
     return cleanup
   }, [])
 
+  const setTargetAddr = useConnectionStore((s) => s.setTargetAddr)
+
   const handleEnterConnection = useCallback((connection: SavedConnection) => {
     setConfig({
       host: connection.host,
       port: connection.port,
       protocol: connection.protocol,
     })
+    setTargetAddr(`${connection.host}:${connection.port}`)
     setActiveConnectionId(connection.id)
-  }, [setConfig])
+
+    // 提取路由字段定义
+    const routeFields = connection.frameConfig?.fields.filter((f) => f.isRoute) ?? []
+    setRouteFields(routeFields)
+
+    // 自动建立 TCP 连接，失败时 toast 提示但不阻塞进入画布
+    connectTCP(connection.host, connection.port, {
+      reconnect: true,
+      heartbeat: true,
+      frameFields: connection.frameConfig?.fields,
+    }).catch((err) => {
+      toast.error('TCP 连接失败', {
+        description: err instanceof Error ? err.message : String(err),
+      })
+    })
+  }, [setConfig, setTargetAddr, setRouteFields])
 
   const handleBackToWelcome = useCallback(() => {
     setActiveConnectionId(null)

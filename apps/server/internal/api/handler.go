@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/flow-packet/server/internal/parser"
@@ -26,13 +27,20 @@ type RouteMapping struct {
 	ResponseMsg string `json:"responseMsg"`
 }
 
-// NewAppState 创建应用状态
+// NewAppState 创建应用状态，自动解析 protoDir 下已有的 proto 文件
 func NewAppState(protoDir string) *AppState {
 	os.MkdirAll(protoDir, 0755)
-	return &AppState{
+	state := &AppState{
 		ProtoDir:      protoDir,
 		RouteMappings: make(map[uint32]RouteMapping),
 	}
+
+	// 启动时自动解析已有的 proto 文件，避免重启后 ParseResult 丢失
+	if result, err := parser.ParseProtoDir(protoDir); err == nil && len(result.Files) > 0 {
+		state.ParseResult = result
+	}
+
+	return state
 }
 
 // RegisterHandlers 注册所有 API handlers
@@ -117,6 +125,17 @@ func makeProtoUploadHandler(state *AppState, srv *Server) http.HandlerFunc {
 		// 解析整个 protoDir 下所有 proto 文件
 		result, err := parser.ParseProtoDir(state.ProtoDir)
 		if err != nil {
+			errMsg := err.Error()
+			// 提取缺失的依赖路径，帮助用户定位问题
+			missing := extractMissingImports(errMsg)
+			if len(missing) > 0 {
+				w.WriteHeader(http.StatusBadRequest)
+				json.NewEncoder(w).Encode(map[string]any{
+					"error":          fmt.Sprintf("parse error: %v", err),
+					"missingImports": missing,
+				})
+				return
+			}
 			writeJSONError(w, http.StatusBadRequest, fmt.Sprintf("parse error: %v", err))
 			return
 		}
@@ -190,4 +209,25 @@ func makeRouteDeleteHandler(state *AppState) HandlerFunc {
 func writeJSONError(w http.ResponseWriter, status int, message string) {
 	w.WriteHeader(status)
 	json.NewEncoder(w).Encode(map[string]string{"error": message})
+}
+
+// missingImportRe 匹配 protocompile 的 "could not resolve path" 错误
+var missingImportRe = regexp.MustCompile(`could not resolve path "([^"]+)"`)
+
+// extractMissingImports 从编译错误中提取缺失的 import 路径
+func extractMissingImports(errMsg string) []string {
+	matches := missingImportRe.FindAllStringSubmatch(errMsg, -1)
+	if len(matches) == 0 {
+		return nil
+	}
+	seen := make(map[string]bool)
+	var result []string
+	for _, m := range matches {
+		path := m[1]
+		if !seen[path] {
+			seen[path] = true
+			result = append(result, path)
+		}
+	}
+	return result
 }

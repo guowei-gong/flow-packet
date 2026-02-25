@@ -66,19 +66,24 @@ func (s *Server) HandleHTTP(pattern string, handler http.HandlerFunc) {
 	s.mux.HandleFunc(pattern, handler)
 }
 
-// Start 启动服务器，动态分配端口
-func (s *Server) Start() (int, error) {
-	ln, err := net.Listen("tcp", "127.0.0.1:0")
+// Start 启动服务器。port > 0 时监听指定端口，port == 0 时动态分配。
+func (s *Server) Start(port ...int) (int, error) {
+	addr := "127.0.0.1:0"
+	if len(port) > 0 && port[0] > 0 {
+		addr = fmt.Sprintf("127.0.0.1:%d", port[0])
+	}
+
+	ln, err := net.Listen("tcp", addr)
 	if err != nil {
 		return 0, fmt.Errorf("listen: %w", err)
 	}
 
 	s.listener = ln
-	port := ln.Addr().(*net.TCPAddr).Port
+	actualPort := ln.Addr().(*net.TCPAddr).Port
 
 	go http.Serve(ln, s.mux)
 
-	return port, nil
+	return actualPort, nil
 }
 
 // Stop 停止服务器

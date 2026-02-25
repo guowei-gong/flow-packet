@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"syscall"
 
 	"github.com/flow-packet/server/internal/api"
@@ -47,12 +48,14 @@ func main() {
 	api.RegisterHandlers(srv, appState)
 
 	// 注册连接管理 handlers
-	registerConnHandlers(srv, tcpClient, packetCfg, runner)
+	registerConnHandlers(srv, tcpClient, &packetCfg, runner)
 
 	// 注册流程执行 handlers
 	registerFlowHandlers(srv, runner, appState)
 
 	// TCP 收包回调 → 匹配 seq 响应
+	// 注意：闭包捕获 packetCfg 变量（而非值），registerConnHandlers 通过指针更新后，
+	// 此处下次调用即使用新配置
 	tcpClient.OnReceive(func(conn network.Conn, data []byte) {
 		pkt, err := codec.DecodeBytes(data, packetCfg)
 		if err != nil {
@@ -61,7 +64,10 @@ func main() {
 		if pkt.IsHeartbeat() {
 			return
 		}
-		runner.SeqCtx().Resolve(pkt.Seq, pkt.Data)
+		// 先精确匹配 seq；若服务端不回传 seq（seq=0），回退到匹配最早的等待请求
+		if !runner.SeqCtx().Resolve(pkt.Seq, pkt.Data) {
+			runner.SeqCtx().ResolveFirst(pkt.Data)
+		}
 	})
 
 	// TCP 连接状态推送
@@ -78,8 +84,8 @@ func main() {
 		})
 	})
 
-	// 启动 HTTP/WS 服务
-	port, err := srv.Start()
+	// 启动 HTTP/WS 服务（固定端口，与前端 fallback 一致）
+	port, err := srv.Start(58996)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to start server: %v\n", err)
 		os.Exit(1)
@@ -98,7 +104,7 @@ func main() {
 	srv.Stop()
 }
 
-func registerConnHandlers(srv *api.Server, client *network.TCPClient, packetCfg codec.PacketConfig, runner *engine.Runner) {
+func registerConnHandlers(srv *api.Server, client *network.TCPClient, packetCfg *codec.PacketConfig, runner *engine.Runner) {
 	srv.Handle("conn.connect", func(payload json.RawMessage) (any, error) {
 		var req struct {
 			Host      string `json:"host"`
@@ -106,9 +112,68 @@ func registerConnHandlers(srv *api.Server, client *network.TCPClient, packetCfg 
 			Timeout   int    `json:"timeout"`
 			Reconnect bool   `json:"reconnect"`
 			Heartbeat bool   `json:"heartbeat"`
+			FrameFields []struct {
+				Name    string `json:"name"`
+				Bytes   int    `json:"bytes"`
+				IsRoute bool   `json:"isRoute"`
+				IsSeq   bool   `json:"isSeq"`
+			} `json:"frameFields"`
 		}
 		if err := json.Unmarshal(payload, &req); err != nil {
 			return nil, fmt.Errorf("invalid payload: %w", err)
+		}
+
+		// 根据 frameFields 动态计算 PacketConfig
+		if len(req.FrameFields) > 0 {
+			// Due 检测：存在 name=="header" && bytes==1 → legacy 模式
+			isDue := false
+			for _, f := range req.FrameFields {
+				if strings.ToLower(f.Name) == "header" && f.Bytes == 1 {
+					isDue = true
+					break
+				}
+			}
+
+			if isDue {
+				// Legacy Due 模式：只计算 RouteBytes/SeqBytes
+				var routeBytes, seqBytes int
+				for _, f := range req.FrameFields {
+					if f.IsRoute {
+						routeBytes += f.Bytes
+					}
+					if f.IsSeq || strings.ToLower(f.Name) == "seq" {
+						seqBytes = f.Bytes
+					}
+				}
+				newCfg := codec.PacketConfig{
+					RouteBytes: routeBytes,
+					SeqBytes:   seqBytes,
+				}
+				*packetCfg = newCfg
+				client.SetPacketConfig(newCfg)
+				runner.SetPacketConfig(newCfg)
+			} else {
+				// 字段驱动模式
+				fields := make([]codec.FieldDef, len(req.FrameFields))
+				for i, f := range req.FrameFields {
+					fields[i] = codec.FieldDef{
+						Name:    f.Name,
+						Bytes:   f.Bytes,
+						IsRoute: f.IsRoute,
+						IsSeq:   f.IsSeq,
+					}
+				}
+				fdCfg, err := codec.NewFieldDrivenConfig(fields)
+				if err != nil {
+					return nil, fmt.Errorf("invalid frame fields: %w", err)
+				}
+				newCfg := codec.PacketConfig{
+					FieldDriven: fdCfg,
+				}
+				*packetCfg = newCfg
+				client.SetPacketConfig(newCfg)
+				runner.SetPacketConfig(newCfg)
+			}
 		}
 
 		addr := fmt.Sprintf("%s:%d", req.Host, req.Port)
@@ -157,6 +222,15 @@ func registerFlowHandlers(srv *api.Server, runner *engine.Runner, state *api.App
 			}
 			md := state.ParseResult.FindMessageDescriptor(messageName)
 			return md
+		})
+
+		// 设置响应解析器
+		runner.SetResponseResolver(func(route uint32) protoreflect.MessageDescriptor {
+			mapping, ok := state.RouteMappings[route]
+			if !ok || state.ParseResult == nil {
+				return nil
+			}
+			return state.ParseResult.FindMessageDescriptor(mapping.ResponseMsg)
 		})
 
 		// 异步执行

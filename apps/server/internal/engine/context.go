@@ -49,6 +49,31 @@ func (c *SeqContext) Resolve(seq uint32, data []byte) bool {
 	return true
 }
 
+// ResolveFirst 当 seq 无法精确匹配时，解析最早的等待请求
+// 适用于服务端不回传 seq 的协议（响应 seq=0）
+func (c *SeqContext) ResolveFirst(data []byte) bool {
+	c.mu.Lock()
+	var minSeq uint32
+	var minCh chan []byte
+	for seq, ch := range c.pending {
+		if minCh == nil || seq < minSeq {
+			minSeq = seq
+			minCh = ch
+		}
+	}
+	if minCh != nil {
+		delete(c.pending, minSeq)
+	}
+	c.mu.Unlock()
+
+	if minCh == nil {
+		return false
+	}
+
+	minCh <- data
+	return true
+}
+
 // WaitResponse 等待指定 seq 的响应，超时返回错误
 func (c *SeqContext) WaitResponse(ch chan []byte, timeout time.Duration) ([]byte, error) {
 	select {

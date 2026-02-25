@@ -1,6 +1,8 @@
 export interface FrameField {
   name: string
   bytes: number
+  isRoute?: boolean
+  isSeq?: boolean
 }
 
 export interface FrameConfig {
@@ -40,6 +42,43 @@ export function saveCustomTemplate(name: string, fields: FrameField[]): FrameTem
   return template
 }
 
+export function formatFramePreview(fields: FrameField[]) {
+  return fields.map((f) => {
+    const prefix = f.isRoute ? '*' : f.isSeq ? '^' : ''
+    return `${prefix}${f.name}(${f.bytes}B)`
+  }).join(' + ')
+}
+
+/**
+ * 多个路由字段值 → 单一 uint32（按字段顺序大端拼接）
+ * 如 cmd=1(1B) + act=2(1B) → (1 << 8) | 2 = 258
+ */
+export function combineRoute(values: Record<string, number>, fields: FrameField[]): number {
+  const routeFields = fields.filter((f) => f.isRoute)
+  let result = 0
+  for (const f of routeFields) {
+    result = (result << (f.bytes * 8)) | ((values[f.name] ?? 0) & ((1 << (f.bytes * 8)) - 1))
+  }
+  return result >>> 0
+}
+
+/**
+ * 单一 uint32 → 各字段值
+ * 如 258 → { cmd: 1, act: 2 }（对于 cmd(1B) + act(1B) 的路由定义）
+ */
+export function splitRoute(combined: number, fields: FrameField[]): Record<string, number> {
+  const routeFields = fields.filter((f) => f.isRoute)
+  const result: Record<string, number> = {}
+  let value = combined >>> 0
+  for (let i = routeFields.length - 1; i >= 0; i--) {
+    const f = routeFields[i]
+    const mask = (1 << (f.bytes * 8)) - 1
+    result[f.name] = value & mask
+    value = value >>> (f.bytes * 8)
+  }
+  return result
+}
+
 export const FRAME_TEMPLATES: FrameTemplate[] = [
   {
     id: 'due',
@@ -48,8 +87,8 @@ export const FRAME_TEMPLATES: FrameTemplate[] = [
     fields: [
       { name: 'size', bytes: 4 },
       { name: 'header', bytes: 1 },
-      { name: 'route', bytes: 2 },
-      { name: 'seq', bytes: 2 },
+      { name: 'route', bytes: 2, isRoute: true },
+      { name: 'seq', bytes: 2, isSeq: true },
     ],
   },
   {
@@ -87,9 +126,9 @@ export const FRAME_TEMPLATES: FrameTemplate[] = [
     fields: [
       { name: 'len', bytes: 4 },
       { name: 'error', bytes: 2 },
-      { name: 'cmd', bytes: 1 },
-      { name: 'act', bytes: 1 },
-      { name: 'index', bytes: 2 },
+      { name: 'cmd', bytes: 1, isRoute: true },
+      { name: 'act', bytes: 1, isRoute: true },
+      { name: 'index', bytes: 2, isSeq: true },
       { name: 'flags', bytes: 2 },
     ],
   },

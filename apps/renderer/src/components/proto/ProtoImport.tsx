@@ -1,12 +1,12 @@
 import { useRef } from 'react'
-import { Upload, FolderUp } from 'lucide-react'
+import { Upload } from 'lucide-react'
+import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { uploadProtoFiles } from '@/services/api'
 import { useProtoStore } from '@/stores/protoStore'
 
 export function ProtoImport() {
-  const fileInputRef = useRef<HTMLInputElement>(null)
-  const folderInputRef = useRef<HTMLInputElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
   const setFiles = useProtoStore((s) => s.setFiles)
   const setMessages = useProtoStore((s) => s.setMessages)
 
@@ -14,7 +14,6 @@ export function ProtoImport() {
     const files = Array.from(e.target.files || [])
     if (files.length === 0) return
 
-    // 文件夹模式：只保留 .proto 文件
     const protoFiles = files.filter((f) => f.name.endsWith('.proto'))
     if (protoFiles.length === 0) return
 
@@ -23,26 +22,26 @@ export function ProtoImport() {
       setFiles(result.files || [])
       setMessages(result.messages || [])
     } catch (err) {
-      console.error('Proto upload failed:', err)
+      const missing = (err as Error & { missingImports?: string[] }).missingImports
+      if (missing && missing.length > 0) {
+        toast.error('Proto 文件缺少依赖', {
+          description: `缺少以下文件，请导入包含这些文件的文件夹：\n${missing.join('\n')}`,
+          duration: 8000,
+        })
+      } else {
+        toast.error('Proto 导入失败', {
+          description: (err as Error).message,
+        })
+      }
     }
 
-    // reset inputs
-    if (fileInputRef.current) fileInputRef.current.value = ''
-    if (folderInputRef.current) folderInputRef.current.value = ''
+    if (inputRef.current) inputRef.current.value = ''
   }
 
   return (
-    <div className="flex gap-1">
+    <>
       <input
-        ref={fileInputRef}
-        type="file"
-        accept=".proto"
-        multiple
-        className="hidden"
-        onChange={handleUpload}
-      />
-      <input
-        ref={folderInputRef}
+        ref={inputRef}
         type="file"
         className="hidden"
         onChange={handleUpload}
@@ -51,21 +50,12 @@ export function ProtoImport() {
       <Button
         variant="default"
         size="sm"
-        className="flex-1 gap-1.5 h-7 text-xs"
-        onClick={() => fileInputRef.current?.click()}
+        className="w-full gap-1.5 h-7 text-xs"
+        onClick={() => inputRef.current?.click()}
       >
         <Upload className="w-3.5 h-3.5" />
-        导入文件
-      </Button>
-      <Button
-        variant="outline"
-        size="sm"
-        className="flex-1 gap-1.5 h-7 text-xs"
-        onClick={() => folderInputRef.current?.click()}
-      >
-        <FolderUp className="w-3.5 h-3.5" />
         导入文件夹
       </Button>
-    </div>
+    </>
   )
 }

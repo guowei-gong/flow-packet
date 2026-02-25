@@ -40,16 +40,20 @@ type NodeCallback func(result NodeResult)
 // MessageResolver 消息描述符解析器
 type MessageResolver func(messageName string) protoreflect.MessageDescriptor
 
+// ResponseResolver 根据 route 获取响应消息描述符
+type ResponseResolver func(route uint32) protoreflect.MessageDescriptor
+
 // Runner 串行流程执行器
 type Runner struct {
-	mu        sync.Mutex
-	running   bool
-	cancel    context.CancelFunc
-	seqCtx    *SeqContext
-	packetCfg codec.PacketConfig
-	timeout   time.Duration
-	sendFn    func(data []byte) error
-	resolver  MessageResolver
+	mu               sync.Mutex
+	running          bool
+	cancel           context.CancelFunc
+	seqCtx           *SeqContext
+	packetCfg        codec.PacketConfig
+	timeout          time.Duration
+	sendFn           func(data []byte) error
+	resolver         MessageResolver
+	responseResolver ResponseResolver
 }
 
 // NewRunner 创建执行器
@@ -61,6 +65,11 @@ func NewRunner(packetCfg codec.PacketConfig) *Runner {
 	}
 }
 
+// SetPacketConfig 动态更新协议帧配置
+func (r *Runner) SetPacketConfig(cfg codec.PacketConfig) {
+	r.packetCfg = cfg
+}
+
 // SetSendFunc 设置发送函数
 func (r *Runner) SetSendFunc(fn func(data []byte) error) {
 	r.sendFn = fn
@@ -69,6 +78,11 @@ func (r *Runner) SetSendFunc(fn func(data []byte) error) {
 // SetResolver 设置消息解析器
 func (r *Runner) SetResolver(resolver MessageResolver) {
 	r.resolver = resolver
+}
+
+// SetResponseResolver 设置响应消息解析器
+func (r *Runner) SetResponseResolver(resolver ResponseResolver) {
+	r.responseResolver = resolver
 }
 
 // SetTimeout 设置响应超时
@@ -274,8 +288,13 @@ func (r *Runner) executeNode(ctx context.Context, node *FlowNode) NodeResult {
 		return result
 	}
 
-	// 解码响应帧
-	respFrame, err := codec.DynamicDecode(respData, nil) // 先以 nil 解码获取 hex
+	// 解码响应：有 responseResolver 时尝试结构化解码，否则退化为 hex
+	var respMd protoreflect.MessageDescriptor
+	if r.responseResolver != nil {
+		respMd = r.responseResolver(node.Route)
+	}
+
+	respFrame, err := codec.DynamicDecode(respData, respMd)
 	if err != nil {
 		result.Error = fmt.Sprintf("decode response: %v", err)
 		result.Duration = time.Since(start).Milliseconds()

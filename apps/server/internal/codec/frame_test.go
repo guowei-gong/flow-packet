@@ -268,3 +268,327 @@ func TestDecodeEOF(t *testing.T) {
 		t.Fatalf("expected io.EOF, got %v", err)
 	}
 }
+
+// ---- 字段驱动模式测试 ----
+
+// antnetFields 返回 Antnet 协议帧字段定义
+// len(4) + error(2) + cmd(1,route) + act(1,route) + index(2,seq) + flags(2)
+func antnetFields() []FieldDef {
+	return []FieldDef{
+		{Name: "len", Bytes: 4},
+		{Name: "error", Bytes: 2},
+		{Name: "cmd", Bytes: 1, IsRoute: true},
+		{Name: "act", Bytes: 1, IsRoute: true},
+		{Name: "index", Bytes: 2, IsSeq: true},
+		{Name: "flags", Bytes: 2},
+	}
+}
+
+func antnetConfig() PacketConfig {
+	fdCfg, err := NewFieldDrivenConfig(antnetFields())
+	if err != nil {
+		panic(err)
+	}
+	return PacketConfig{FieldDriven: fdCfg}
+}
+
+func TestNewFieldDrivenConfig(t *testing.T) {
+	cfg, err := NewFieldDrivenConfig(antnetFields())
+	if err != nil {
+		t.Fatalf("NewFieldDrivenConfig error: %v", err)
+	}
+
+	if cfg.SizeIndex != 0 {
+		t.Fatalf("SizeIndex = %d, want 0", cfg.SizeIndex)
+	}
+	if cfg.SizeBytes != 4 {
+		t.Fatalf("SizeBytes = %d, want 4", cfg.SizeBytes)
+	}
+	if cfg.SeqIndex != 4 {
+		t.Fatalf("SeqIndex = %d, want 4", cfg.SeqIndex)
+	}
+	if len(cfg.RouteFields) != 2 || cfg.RouteFields[0] != 2 || cfg.RouteFields[1] != 3 {
+		t.Fatalf("RouteFields = %v, want [2 3]", cfg.RouteFields)
+	}
+	// header = 4+2+1+1+2+2 = 12
+	if cfg.HeaderSize != 12 {
+		t.Fatalf("HeaderSize = %d, want 12", cfg.HeaderSize)
+	}
+}
+
+func TestNewFieldDrivenConfigNoSize(t *testing.T) {
+	fields := []FieldDef{
+		{Name: "cmd", Bytes: 1, IsRoute: true},
+		{Name: "data", Bytes: 4},
+	}
+	_, err := NewFieldDrivenConfig(fields)
+	if err == nil {
+		t.Fatal("expected error for missing size field")
+	}
+}
+
+func TestFieldDrivenEncodeDecodeRoundTrip(t *testing.T) {
+	cfg := antnetConfig()
+	pkt := &Packet{
+		Route: (1 << 8) | 2, // cmd=1, act=2 → 258
+		Seq:   100,
+		Data:  []byte{0xDE, 0xAD, 0xBE, 0xEF},
+	}
+
+	encoded, err := Encode(pkt, cfg)
+	if err != nil {
+		t.Fatalf("Encode error: %v", err)
+	}
+
+	decoded, err := DecodeBytes(encoded, cfg)
+	if err != nil {
+		t.Fatalf("DecodeBytes error: %v", err)
+	}
+
+	if decoded.Route != pkt.Route {
+		t.Fatalf("route = %d, want %d", decoded.Route, pkt.Route)
+	}
+	if decoded.Seq != pkt.Seq {
+		t.Fatalf("seq = %d, want %d", decoded.Seq, pkt.Seq)
+	}
+	if !bytes.Equal(decoded.Data, pkt.Data) {
+		t.Fatalf("data = %x, want %x", decoded.Data, pkt.Data)
+	}
+	if decoded.Heartbeat {
+		t.Fatal("expected non-heartbeat packet")
+	}
+}
+
+func TestFieldDrivenWireFormat(t *testing.T) {
+	cfg := antnetConfig()
+	// cmd=1, act=2 → route=258
+	pkt := &Packet{
+		Route: 258,
+		Seq:   7,
+		Data:  []byte{0x01, 0x02, 0x03},
+	}
+
+	buf, err := Encode(pkt, cfg)
+	if err != nil {
+		t.Fatalf("Encode error: %v", err)
+	}
+
+	// header = 12 bytes, data = 3 bytes, total = 15
+	if len(buf) != 15 {
+		t.Fatalf("buf len = %d, want 15", len(buf))
+	}
+
+	// len(4B LE) = 3 (payload body size)
+	sizeVal := binary.LittleEndian.Uint32(buf[0:4])
+	if sizeVal != 3 {
+		t.Fatalf("size = %d, want 3", sizeVal)
+	}
+
+	// error(2B LE) = 0
+	errVal := binary.LittleEndian.Uint16(buf[4:6])
+	if errVal != 0 {
+		t.Fatalf("error = %d, want 0", errVal)
+	}
+
+	// cmd(1B) = 1
+	if buf[6] != 1 {
+		t.Fatalf("cmd = %d, want 1", buf[6])
+	}
+
+	// act(1B) = 2
+	if buf[7] != 2 {
+		t.Fatalf("act = %d, want 2", buf[7])
+	}
+
+	// index(2B LE) = 7
+	seqVal := binary.LittleEndian.Uint16(buf[8:10])
+	if seqVal != 7 {
+		t.Fatalf("index = %d, want 7", seqVal)
+	}
+
+	// flags(2B LE) = 0
+	flagsVal := binary.LittleEndian.Uint16(buf[10:12])
+	if flagsVal != 0 {
+		t.Fatalf("flags = %d, want 0", flagsVal)
+	}
+
+	// payload body = [01 02 03]
+	if !bytes.Equal(buf[12:15], []byte{0x01, 0x02, 0x03}) {
+		t.Fatalf("data = %x, want 010203", buf[12:15])
+	}
+}
+
+func TestFieldDrivenStreamDecode(t *testing.T) {
+	cfg := antnetConfig()
+
+	pkt := &Packet{
+		Route: 258,
+		Seq:   42,
+		Data:  []byte("hello"),
+	}
+
+	encoded, _ := Encode(pkt, cfg)
+	decoder := NewDecoder(bytes.NewReader(encoded), cfg)
+
+	decoded, err := decoder.Decode()
+	if err != nil {
+		t.Fatalf("Decode error: %v", err)
+	}
+
+	if decoded.Route != 258 {
+		t.Fatalf("route = %d, want 258", decoded.Route)
+	}
+	if decoded.Seq != 42 {
+		t.Fatalf("seq = %d, want 42", decoded.Seq)
+	}
+	if !bytes.Equal(decoded.Data, []byte("hello")) {
+		t.Fatalf("data = %q, want %q", decoded.Data, "hello")
+	}
+}
+
+func TestFieldDrivenStickyPackets(t *testing.T) {
+	cfg := antnetConfig()
+
+	pkt1 := &Packet{Route: 258, Seq: 1, Data: []byte("a")}
+	pkt2 := &Packet{Route: 259, Seq: 2, Data: []byte("bb")}
+
+	buf1, _ := Encode(pkt1, cfg)
+	buf2, _ := Encode(pkt2, cfg)
+
+	combined := append(buf1, buf2...)
+	decoder := NewDecoder(bytes.NewReader(combined), cfg)
+
+	d1, err := decoder.Decode()
+	if err != nil {
+		t.Fatalf("Decode pkt1 error: %v", err)
+	}
+	if d1.Route != 258 || d1.Seq != 1 {
+		t.Fatalf("pkt1: route=%d seq=%d, want 258/1", d1.Route, d1.Seq)
+	}
+
+	d2, err := decoder.Decode()
+	if err != nil {
+		t.Fatalf("Decode pkt2 error: %v", err)
+	}
+	if d2.Route != 259 || d2.Seq != 2 {
+		t.Fatalf("pkt2: route=%d seq=%d, want 259/2", d2.Route, d2.Seq)
+	}
+}
+
+func TestFieldDrivenSplitPacket(t *testing.T) {
+	cfg := antnetConfig()
+	pkt := &Packet{Route: 258, Seq: 1, Data: []byte("test")}
+	encoded, _ := Encode(pkt, cfg)
+
+	pr, pw := io.Pipe()
+
+	go func() {
+		// 分两次写入：先写 header 的前半段，再写剩余
+		pw.Write(encoded[:5])
+		pw.Write(encoded[5:])
+		pw.Close()
+	}()
+
+	decoder := NewDecoder(pr, cfg)
+	decoded, err := decoder.Decode()
+	if err != nil {
+		t.Fatalf("Decode error: %v", err)
+	}
+
+	if decoded.Route != 258 {
+		t.Fatalf("route = %d, want 258", decoded.Route)
+	}
+	if !bytes.Equal(decoded.Data, []byte("test")) {
+		t.Fatalf("data = %q, want %q", decoded.Data, "test")
+	}
+}
+
+func TestFieldDrivenEmptyPayload(t *testing.T) {
+	cfg := antnetConfig()
+	pkt := &Packet{
+		Route: 258,
+		Seq:   0,
+		Data:  nil,
+	}
+
+	encoded, err := Encode(pkt, cfg)
+	if err != nil {
+		t.Fatalf("Encode error: %v", err)
+	}
+
+	// header only, no payload body
+	if len(encoded) != 12 {
+		t.Fatalf("buf len = %d, want 12", len(encoded))
+	}
+
+	// size = 0
+	sizeVal := binary.LittleEndian.Uint32(encoded[0:4])
+	if sizeVal != 0 {
+		t.Fatalf("size = %d, want 0", sizeVal)
+	}
+
+	decoded, err := DecodeBytes(encoded, cfg)
+	if err != nil {
+		t.Fatalf("DecodeBytes error: %v", err)
+	}
+
+	if decoded.Route != 258 {
+		t.Fatalf("route = %d, want 258", decoded.Route)
+	}
+	if decoded.Data != nil {
+		t.Fatalf("data = %v, want nil", decoded.Data)
+	}
+}
+
+func TestFieldDrivenRouteSplitCombine(t *testing.T) {
+	fdCfg, _ := NewFieldDrivenConfig(antnetFields())
+
+	// cmd=3, act=7 → route = (3<<8)|7 = 775
+	route := uint32(775)
+	split := splitRouteToFields(route, fdCfg)
+
+	// index 2 = cmd, index 3 = act
+	if split[2] != 3 {
+		t.Fatalf("cmd = %d, want 3", split[2])
+	}
+	if split[3] != 7 {
+		t.Fatalf("act = %d, want 7", split[3])
+	}
+
+	combined := combineRouteFromFields(split, fdCfg)
+	if combined != route {
+		t.Fatalf("combined = %d, want %d", combined, route)
+	}
+}
+
+func TestLegacyDueUnaffected(t *testing.T) {
+	// 确认 legacy Due 模式在添加字段驱动后仍然正常工作
+	cfg := DefaultPacketConfig()
+	if cfg.IsFieldDriven() {
+		t.Fatal("DefaultPacketConfig should not be field-driven")
+	}
+
+	pkt := &Packet{Route: 1001, Seq: 42, Data: []byte("legacy")}
+	encoded, err := Encode(pkt, cfg)
+	if err != nil {
+		t.Fatalf("Legacy Encode error: %v", err)
+	}
+
+	// 验证仍然是大端序
+	size := binary.BigEndian.Uint32(encoded[0:4])
+	expectedPayload := 1 + 2 + 2 + 6 // header + route + seq + data
+	if size != uint32(expectedPayload) {
+		t.Fatalf("legacy size = %d, want %d", size, expectedPayload)
+	}
+
+	decoded, err := DecodeBytes(encoded, cfg)
+	if err != nil {
+		t.Fatalf("Legacy DecodeBytes error: %v", err)
+	}
+	if decoded.Route != 1001 || decoded.Seq != 42 {
+		t.Fatalf("legacy decoded: route=%d seq=%d, want 1001/42", decoded.Route, decoded.Seq)
+	}
+	if !bytes.Equal(decoded.Data, []byte("legacy")) {
+		t.Fatalf("legacy data = %q, want %q", decoded.Data, "legacy")
+	}
+}
