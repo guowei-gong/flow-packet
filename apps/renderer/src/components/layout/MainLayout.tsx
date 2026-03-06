@@ -71,7 +71,7 @@ export function MainLayout({
         minSize={15}
         maxSize={showController ? 50 : 0}
         className={cn(
-          'transition-[flex-grow] duration-500',
+          '',
           { 'min-w-[280px]': showController }
         )}
       >
