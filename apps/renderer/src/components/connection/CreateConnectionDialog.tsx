@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Loader2, Plus, Trash2, Github, ChevronRight, ChevronLeft, Box, Ellipsis, Route, Hash } from 'lucide-react'
+import { Loader2, Plus, Trash2, Github, ChevronRight, ChevronLeft, ChevronDown, Box, Ellipsis, Route, Hash, TriangleAlert } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   Dialog,
@@ -23,13 +23,6 @@ import {
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import {
   useSavedConnectionStore,
   TAG_OPTIONS,
   COLOR_OPTIONS,
@@ -40,8 +33,11 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { cn } from '@/lib/utils'
 import {
   FRAME_TEMPLATES,
@@ -49,7 +45,9 @@ import {
   saveCustomTemplate,
   formatFramePreview,
   type FrameField,
+  type FrameTemplate,
   type FrameConfig,
+  type ByteOrder,
 } from '@/types/frame'
 
 interface CreateConnectionDialogProps {
@@ -88,21 +86,24 @@ export function CreateConnectionDialog({
 
   // wizard state
   const [step, setStep] = useState<1 | 2 | 3>(1)
-  const [frameType, setFrameType] = useState<'template' | 'custom'>('template')
+  const [frameType, setFrameType] = useState<'template' | 'saved' | 'custom'>('template')
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null)
   const [customFields, setCustomFields] = useState<FrameField[]>([
     { name: '', bytes: 4 },
   ])
+  const [byteOrder, setByteOrder] = useState<ByteOrder>('big')
 
   // form state
   const [name, setName] = useState('')
   const [tag, setTag] = useState('本地')
   const [host, setHost] = useState('127.0.0.1')
   const [port, setPort] = useState(9001)
+  const [protocol, setProtocol] = useState<'tcp' | 'ws'>('tcp')
   const [color, setColor] = useState(COLOR_OPTIONS[0])
   const [testing, setTesting] = useState(false)
   const [showSaveTemplate, setShowSaveTemplate] = useState(false)
   const [templateName, setTemplateName] = useState('')
+  const [savedTemplates, setSavedTemplates] = useState<FrameTemplate[]>([])
 
   const isEdit = !!editConnection
 
@@ -113,6 +114,7 @@ export function CreateConnectionDialog({
         setTag(editConnection.tag)
         setHost(editConnection.host)
         setPort(editConnection.port)
+        setProtocol(editConnection.protocol ?? 'tcp')
         setColor(editConnection.color)
         setStep(3)
       } else {
@@ -120,17 +122,25 @@ export function CreateConnectionDialog({
         setTag('本地')
         setHost('127.0.0.1')
         setPort(9001)
+        setProtocol('tcp')
         setColor(COLOR_OPTIONS[0])
         setStep(1)
         setFrameType('template')
         setSelectedTemplateId(null)
         setCustomFields([{ name: '', bytes: 4 }])
+        setByteOrder('big')
       }
       setTesting(false)
       setShowSaveTemplate(false)
       setTemplateName('')
     }
   }, [open, editConnection])
+
+  useEffect(() => {
+    if (step === 2 && frameType === 'saved') {
+      loadCustomTemplates().then(setSavedTemplates)
+    }
+  }, [step, frameType])
 
   const handleTest = async () => {
     if (!host || !port) {
@@ -159,11 +169,14 @@ export function CreateConnectionDialog({
 
   const buildFrameConfig = (): FrameConfig => {
     if (frameType === 'template') {
-      const allTemplates = [...FRAME_TEMPLATES, ...loadCustomTemplates()]
-      const tpl = allTemplates.find((t) => t.id === selectedTemplateId)!
-      return { type: 'template', templateId: tpl.id, fields: tpl.fields }
+      const tpl = FRAME_TEMPLATES.find((t) => t.id === selectedTemplateId)!
+      return { type: 'template', templateId: tpl.id, fields: tpl.fields, byteOrder: 'big' }
     }
-    return { type: 'custom', fields: customFields }
+    if (frameType === 'saved') {
+      const tpl = savedTemplates.find((t) => t.id === selectedTemplateId)!
+      return { type: 'template', templateId: tpl.id, fields: tpl.fields, byteOrder: tpl.byteOrder ?? 'big' }
+    }
+    return { type: 'custom', fields: customFields, byteOrder }
   }
 
   const handleSave = () => {
@@ -186,6 +199,7 @@ export function CreateConnectionDialog({
         tag,
         host: host.trim(),
         port,
+        protocol,
         color,
       })
       toast.message('连接已更新')
@@ -196,7 +210,7 @@ export function CreateConnectionDialog({
         tag,
         host: host.trim(),
         port,
-        protocol: 'tcp',
+        protocol,
         color,
         frameConfig: buildFrameConfig(),
       })
@@ -210,10 +224,10 @@ export function CreateConnectionDialog({
   }
 
   const canProceedStep2 = () => {
-    if (frameType === 'template') {
+    if (frameType === 'template' || frameType === 'saved') {
       return selectedTemplateId !== null
     }
-    return customFields.length > 0 && customFields.every((f) => f.name.trim() && f.bytes > 0)
+    return customFields.length > 0 && customFields.every((f) => f.name.trim() && f.bytes > 0) && customFields.some((f) => f.isRoute)
   }
 
   const handleAddField = () => {
@@ -270,17 +284,22 @@ export function CreateConnectionDialog({
                 取消
               </Button>
               <Button
-                onClick={() => {
+                onClick={async () => {
                   if (!templateName.trim()) {
                     toast.error('请输入模板名称')
                     return
                   }
-                  saveCustomTemplate(
-                    templateName.trim(),
-                    customFields.filter((f) => f.name.trim() && f.bytes > 0)
-                  )
-                  toast.message('模板已保存')
-                  onOpenChange(false)
+                  try {
+                    await saveCustomTemplate(
+                      templateName.trim(),
+                      customFields.filter((f) => f.name.trim() && f.bytes > 0),
+                      byteOrder
+                    )
+                    toast.message('模板已保存')
+                    onOpenChange(false)
+                  } catch {
+                    toast.error('模板保存失败')
+                  }
                 }}
               >
                 保存
@@ -320,6 +339,28 @@ export function CreateConnectionDialog({
                     <div className="font-medium">协议帧模板</div>
                     <div className="text-sm text-muted-foreground mt-0.5">
                       使用已有游戏服务器框架的协议帧格式，开箱即用
+                    </div>
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFrameType('saved')}
+                  className={cn(
+                    'flex items-start gap-3 rounded-lg border p-4 text-left transition-colors',
+                    frameType === 'saved'
+                      ? 'border-primary bg-primary/5'
+                      : 'border-border hover:bg-accent/50'
+                  )}
+                >
+                  <div className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 border-current">
+                    {frameType === 'saved' && (
+                      <div className="h-2 w-2 rounded-full bg-current" />
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <div className="font-medium">已保存的模板</div>
+                    <div className="text-sm text-muted-foreground mt-0.5">
+                      使用之前保存的自定义协议帧模板
                     </div>
                   </div>
                 </button>
@@ -368,9 +409,8 @@ export function CreateConnectionDialog({
             </CardHeader>
             <CardContent>
               <div className="flex flex-col divide-y rounded-lg border">
-                {[...FRAME_TEMPLATES, ...loadCustomTemplates()].map((tpl) => {
+                {FRAME_TEMPLATES.map((tpl) => {
                   const selected = selectedTemplateId === tpl.id
-                  const isCustom = !tpl.github
                   return (
                     <button
                       key={tpl.id}
@@ -382,26 +422,18 @@ export function CreateConnectionDialog({
                       )}
                     >
                       <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-muted">
-                        {isCustom ? (
-                          <Box className="h-4 w-4 text-muted-foreground" />
-                        ) : (
-                          <Github className="h-4 w-4 text-muted-foreground" />
-                        )}
+                        <Github className="h-4 w-4 text-muted-foreground" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        {isCustom ? (
-                          <span className="font-medium text-sm">{tpl.name}</span>
-                        ) : (
-                          <a
-                            href={tpl.github}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            onClick={(e) => e.stopPropagation()}
-                            className="font-medium text-sm text-primary hover:underline"
-                          >
-                            {tpl.name}
-                          </a>
-                        )}
+                        <a
+                          href={tpl.github}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="font-medium text-sm text-primary hover:underline"
+                        >
+                          {tpl.name}
+                        </a>
                         <div className="text-xs text-muted-foreground/70 mt-0.5 truncate">
                           {formatFramePreview(tpl.fields)}
                         </div>
@@ -413,6 +445,77 @@ export function CreateConnectionDialog({
                   )
                 })}
               </div>
+            </CardContent>
+            <CardFooter className="justify-between">
+              <Button variant="ghost" onClick={() => setStep(1)}>
+                <ChevronLeft className="w-4 h-4" />
+                上一步
+              </Button>
+              <Button onClick={() => setStep(3)} disabled={!selectedTemplateId}>
+                下一步
+                <ChevronRight className="w-4 h-4" />
+              </Button>
+            </CardFooter>
+          </Card>
+        )}
+
+        {/* Step 2: Saved templates */}
+        {!showSaveTemplate && step === 2 && frameType === 'saved' && (
+          <Card>
+            <CardHeader>
+              <StepIndicator step={2} />
+              <CardTitle>已保存的模板</CardTitle>
+              <CardDescription>
+                选择一个之前保存的自定义协议帧模板
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {(() => {
+                if (savedTemplates.length === 0) {
+                  return (
+                    <div className="flex flex-col items-center justify-center py-8 text-center">
+                      <Box className="h-10 w-10 text-muted-foreground/40 mb-3" />
+                      <p className="text-sm text-muted-foreground">
+                        暂无已保存的模板
+                      </p>
+                      <p className="text-xs text-muted-foreground/60 mt-1">
+                        创建自定义协议帧时可保存为模板
+                      </p>
+                    </div>
+                  )
+                }
+                return (
+                  <div className="flex flex-col divide-y rounded-lg border">
+                    {savedTemplates.map((tpl) => {
+                      const selected = selectedTemplateId === tpl.id
+                      return (
+                        <button
+                          key={tpl.id}
+                          type="button"
+                          onClick={() => setSelectedTemplateId(tpl.id)}
+                          className={cn(
+                            'flex items-center gap-3 p-3 text-left transition-colors first:rounded-t-lg last:rounded-b-lg',
+                            selected ? 'bg-primary/5' : 'hover:bg-accent/50'
+                          )}
+                        >
+                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-muted">
+                            <Box className="h-4 w-4 text-muted-foreground" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <span className="font-medium text-sm">{tpl.name}</span>
+                            <div className="text-xs text-muted-foreground/70 mt-0.5 truncate">
+                              {formatFramePreview(tpl.fields)}
+                            </div>
+                          </div>
+                          <Badge variant={selected ? 'default' : 'outline'} className="shrink-0">
+                            {selected ? '已选择' : '选择'}
+                          </Badge>
+                        </button>
+                      )
+                    })}
+                  </div>
+                )
+              })()}
             </CardContent>
             <CardFooter className="justify-between">
               <Button variant="ghost" onClick={() => setStep(1)}>
@@ -439,6 +542,32 @@ export function CreateConnectionDialog({
             </CardHeader>
             <CardContent>
               <div className="flex flex-col gap-3">
+                <div className="flex items-center gap-1 rounded-lg border p-1 ml-[calc(2px+var(--spacing)*2)]">
+                  <button
+                    type="button"
+                    onClick={() => setByteOrder('big')}
+                    className={cn(
+                      'flex-1 rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
+                      byteOrder === 'big'
+                        ? 'bg-primary text-primary-foreground'
+                        : 'text-muted-foreground hover:text-foreground'
+                    )}
+                  >
+                    大端序 (Big-Endian)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setByteOrder('little')}
+                    className={cn(
+                      'flex-1 rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
+                      byteOrder === 'little'
+                        ? 'bg-primary text-primary-foreground'
+                        : 'text-muted-foreground hover:text-foreground'
+                    )}
+                  >
+                    小端序 (Little-Endian)
+                  </button>
+                </div>
                 {customFields.map((field, i) => (
                   <div
                     key={i}
@@ -504,7 +633,7 @@ export function CreateConnectionDialog({
                 <Button
                   variant="outline"
                   size="sm"
-                  className="w-fit"
+                  className="w-fit ml-[calc(2px+var(--spacing)*2)]"
                   onClick={handleAddField}
                 >
                   <Plus className="h-3.5 w-3.5" />
@@ -514,6 +643,14 @@ export function CreateConnectionDialog({
                   <div className="text-xs text-muted-foreground mt-1 px-1">
                     帧结构预览：{formatFramePreview(customFields.filter((f) => f.name.trim() && f.bytes > 0))}
                   </div>
+                )}
+                {customFields.some((f) => f.name.trim() && f.bytes > 0) && !customFields.some((f) => f.isRoute) && (
+                  <Alert className="border-transparent bg-gradient-to-r from-amber-500/10 to-transparent">
+                    <TriangleAlert className="h-4 w-4 text-amber-500" />
+                    <AlertDescription>
+                      需要至少标记一个字段为路由，用于消息的分发与匹配。点击字段右侧的菜单按钮进行标记。
+                    </AlertDescription>
+                  </Alert>
                 )}
               </div>
             </CardContent>
@@ -584,18 +721,43 @@ export function CreateConnectionDialog({
                     </Field>
                     <Field className="flex-1">
                       <FieldLabel htmlFor="conn-tag">标签</FieldLabel>
-                      <Select value={tag} onValueChange={setTag}>
-                        <SelectTrigger id="conn-tag" className="w-full">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {TAG_OPTIONS.map((t) => (
-                            <SelectItem key={t} value={t}>{t}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button id="conn-tag" variant="outline" className="w-full justify-between font-normal">
+                            {tag}
+                            <ChevronDown className="h-4 w-4 opacity-50" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start" className="min-w-[var(--radix-dropdown-menu-trigger-width)]">
+                          <DropdownMenuRadioGroup value={tag} onValueChange={setTag}>
+                            {TAG_OPTIONS.map((t) => (
+                              <DropdownMenuRadioItem key={t} value={t}>{t}</DropdownMenuRadioItem>
+                            ))}
+                          </DropdownMenuRadioGroup>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </Field>
                   </div>
+                  <Field>
+                    <FieldLabel htmlFor="conn-protocol">网络协议</FieldLabel>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button id="conn-protocol" variant="outline" className="w-full justify-between font-normal">
+                          {protocol === 'tcp' ? 'TCP' : 'WebSocket 网关'}
+                          <ChevronDown className="h-4 w-4 opacity-50" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start" className="min-w-[var(--radix-dropdown-menu-trigger-width)]">
+                        <DropdownMenuRadioGroup value={protocol} onValueChange={(v) => setProtocol(v as 'tcp' | 'ws')}>
+                          <DropdownMenuRadioItem value="tcp">TCP</DropdownMenuRadioItem>
+                          <DropdownMenuRadioItem value="ws">WebSocket 网关</DropdownMenuRadioItem>
+                        </DropdownMenuRadioGroup>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                    <FieldDescription>
+                      选择与目标服务器通信使用的网络协议
+                    </FieldDescription>
+                  </Field>
                   <Field>
                     <FieldLabel>标识颜色</FieldLabel>
                     <div className="flex items-center gap-2">

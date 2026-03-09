@@ -174,7 +174,7 @@ function MessageNode({ message }: { message: MessageInfo }) {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>设置路由</DialogTitle>
+            <DialogTitle>设置模板</DialogTitle>
             <DialogDescription>{message.ShortName}</DialogDescription>
           </DialogHeader>
 

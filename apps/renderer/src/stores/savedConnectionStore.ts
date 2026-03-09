@@ -7,7 +7,7 @@ export interface SavedConnection {
   tag: string
   host: string
   port: number
-  protocol: 'tcp'
+  protocol: 'tcp' | 'ws'
   color: string
   frameConfig?: FrameConfig
   createdAt: number

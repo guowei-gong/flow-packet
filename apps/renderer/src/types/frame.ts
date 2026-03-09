@@ -1,3 +1,5 @@
+import { getTemplateList, saveTemplate } from '@/services/api'
+
 export interface FrameField {
   name: string
   bytes: number
@@ -5,10 +7,13 @@ export interface FrameField {
   isSeq?: boolean
 }
 
+export type ByteOrder = 'big' | 'little'
+
 export interface FrameConfig {
   type: 'template' | 'custom'
   templateId?: string
   fields: FrameField[]
+  byteOrder: ByteOrder
 }
 
 export interface FrameTemplate {
@@ -16,30 +21,21 @@ export interface FrameTemplate {
   name: string
   github: string
   fields: FrameField[]
+  byteOrder?: ByteOrder
 }
 
-const CUSTOM_TEMPLATES_KEY = 'flow-packet-custom-templates'
-
-export function loadCustomTemplates(): FrameTemplate[] {
+export async function loadCustomTemplates(): Promise<FrameTemplate[]> {
   try {
-    const raw = localStorage.getItem(CUSTOM_TEMPLATES_KEY)
-    return raw ? JSON.parse(raw) : []
+    const res = await getTemplateList() as { templates: FrameTemplate[] }
+    return res.templates ?? []
   } catch {
     return []
   }
 }
 
-export function saveCustomTemplate(name: string, fields: FrameField[]): FrameTemplate {
-  const template: FrameTemplate = {
-    id: `custom_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-    name,
-    github: '',
-    fields,
-  }
-  const existing = loadCustomTemplates()
-  existing.push(template)
-  localStorage.setItem(CUSTOM_TEMPLATES_KEY, JSON.stringify(existing))
-  return template
+export async function saveCustomTemplate(name: string, fields: FrameField[], byteOrder?: ByteOrder): Promise<FrameTemplate> {
+  const res = await saveTemplate(name, fields, byteOrder) as { template: FrameTemplate }
+  return res.template
 }
 
 export function formatFramePreview(fields: FrameField[]) {
