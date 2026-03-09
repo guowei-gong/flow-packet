@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { ChevronRight, File, Box, Trash2 } from 'lucide-react'
+import { useState, useMemo } from 'react'
+import { ChevronRight, File, Box, Trash2, Search } from 'lucide-react'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import {
   Collapsible,
@@ -34,9 +34,27 @@ import { ProtoImport } from './ProtoImport'
 
 export function ProtoBrowser() {
   const files = useProtoStore((s) => s.files)
+  const [search, setSearch] = useState('')
+
+  const filteredFiles = useMemo(() => {
+    if (!search.trim()) return files
+    const q = search.toLowerCase()
+    return files
+      .map((file) => {
+        if (file.Path.toLowerCase().includes(q)) return file
+        const matched = (file.Messages ?? []).filter(
+          (m) => m.ShortName.toLowerCase().includes(q) || m.Name.toLowerCase().includes(q)
+        )
+        if (matched.length === 0) return null
+        return { ...file, Messages: matched }
+      })
+      .filter(Boolean) as typeof files
+  }, [files, search])
+
+  const isSearching = search.trim().length > 0
 
   return (
-    <div className="flex flex-col h-full px-2.5">
+    <div className="flex flex-col h-full px-2.5 overflow-hidden">
       <div className="flex items-center justify-between px-2 h-8 shrink-0">
         <span className="text-xs font-medium text-muted-foreground">
           协议浏览器
@@ -47,13 +65,22 @@ export function ProtoBrowser() {
         <ProtoImport />
       </div>
 
-      <ScrollArea className="flex-1">
+      <ScrollArea className="flex-1 [&_[data-slot=scroll-area-viewport]>div]:!block">
         <SidebarGroup className="px-0">
           <SidebarGroupLabel>Proto 文件</SidebarGroupLabel>
+          <div className="relative px-2 pb-1">
+            <Search className="absolute left-4 top-0 h-7 w-3.5 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="搜索协议或消息..."
+              className="h-7 pl-7 text-xs"
+            />
+          </div>
           <SidebarGroupContent>
             <SidebarMenu>
-              {files.map((file) => (
-                <FileNode key={file.Path} file={file} />
+              {filteredFiles.map((file) => (
+                <FileNode key={file.Path} file={file} forceOpen={isSearching} />
               ))}
             </SidebarMenu>
           </SidebarGroupContent>
@@ -65,16 +92,24 @@ export function ProtoBrowser() {
             </span>
           </div>
         )}
+        {isSearching && filteredFiles.length === 0 && files.length > 0 && (
+          <div className="px-3 py-4 text-center">
+            <span className="text-xs text-muted-foreground">
+              没有匹配的协议或消息
+            </span>
+          </div>
+        )}
       </ScrollArea>
     </div>
   )
 }
 
-function FileNode({ file }: { file: FileInfo }) {
+function FileNode({ file, forceOpen }: { file: FileInfo; forceOpen?: boolean }) {
   return (
     <SidebarMenuItem>
       <Collapsible
         defaultOpen
+        open={forceOpen || undefined}
         className="group/collapsible [&[data-state=open]>button>svg:first-child]:rotate-90"
       >
         <CollapsibleTrigger asChild>
