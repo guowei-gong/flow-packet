@@ -99,6 +99,7 @@ export function CreateConnectionDialog({
   const [host, setHost] = useState('127.0.0.1')
   const [port, setPort] = useState(9001)
   const [protocol, setProtocol] = useState<'tcp' | 'ws'>('tcp')
+  const [codec, setCodec] = useState<'protobuf'>('protobuf')
   const [color, setColor] = useState(COLOR_OPTIONS[0])
   const [testing, setTesting] = useState(false)
   const [showSaveTemplate, setShowSaveTemplate] = useState(false)
@@ -115,6 +116,7 @@ export function CreateConnectionDialog({
         setHost(editConnection.host)
         setPort(editConnection.port)
         setProtocol(editConnection.protocol ?? 'tcp')
+        setCodec(editConnection.codec ?? 'protobuf')
         setColor(editConnection.color)
         setStep(3)
       } else {
@@ -123,6 +125,7 @@ export function CreateConnectionDialog({
         setHost('127.0.0.1')
         setPort(9001)
         setProtocol('tcp')
+        setCodec('protobuf')
         setColor(COLOR_OPTIONS[0])
         setStep(1)
         setFrameType('template')
@@ -201,6 +204,7 @@ export function CreateConnectionDialog({
         host: host.trim(),
         port,
         protocol,
+        codec,
         color,
       })
       toast.message('连接已更新')
@@ -212,6 +216,7 @@ export function CreateConnectionDialog({
         host: host.trim(),
         port,
         protocol,
+        codec,
         color,
         frameConfig: buildFrameConfig(),
       })
@@ -757,6 +762,25 @@ export function CreateConnectionDialog({
                     </DropdownMenu>
                     <FieldDescription>
                       选择与目标服务器通信使用的网络协议
+                    </FieldDescription>
+                  </Field>
+                  <Field>
+                    <FieldLabel htmlFor="conn-codec">编解码协议</FieldLabel>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button id="conn-codec" variant="outline" className="w-full justify-between font-normal">
+                          Protobuf
+                          <ChevronDown className="h-4 w-4 opacity-50" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start" className="min-w-[var(--radix-dropdown-menu-trigger-width)]">
+                        <DropdownMenuRadioGroup value={codec} onValueChange={(v) => setCodec(v as 'protobuf')}>
+                          <DropdownMenuRadioItem value="protobuf">Protobuf</DropdownMenuRadioItem>
+                        </DropdownMenuRadioGroup>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                    <FieldDescription>
+                      选择消息体的编解码方式
                     </FieldDescription>
                   </Field>
                   <Field>
