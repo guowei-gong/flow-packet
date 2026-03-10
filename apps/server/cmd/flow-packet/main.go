@@ -32,13 +32,17 @@ func main() {
 		SeqBytes:   2,
 	}
 
-	// 初始化 TCP 客户端
+	// 初始化 TCP 和 WebSocket 客户端
 	tcpClient := network.NewTCPClient(packetCfg)
+	wsClient := network.NewWSClient(packetCfg)
+
+	// activeClient 指向当前活跃的客户端, 默认为 TCP
+	var activeClient network.Client = tcpClient
 
 	// 初始化执行引擎
 	runner := engine.NewRunner(packetCfg)
 	runner.SetSendFunc(func(data []byte) error {
-		return tcpClient.Send(data)
+		return activeClient.Send(data)
 	})
 
 	// 初始化 API 服务
@@ -47,15 +51,15 @@ func main() {
 	api.RegisterHandlers(srv, appState)
 
 	// 注册连接管理 handlers
-	registerConnHandlers(srv, tcpClient, &packetCfg, runner)
+	registerConnHandlers(srv, tcpClient, wsClient, &activeClient, &packetCfg, runner)
 
 	// 注册流程执行 handlers
 	registerFlowHandlers(srv, runner, appState)
 
-	// TCP 收包回调 -> 匹配 seq 响应
+	// 收包回调 -> 匹配 seq 响应
 	// 注意: 闭包捕获 packetCfg 变量(而非值), registerConnHandlers 通过指针更新后,
 	// 此处下次调用即使用新配置
-	tcpClient.OnReceive(func(conn network.Conn, data []byte) {
+	onReceive := func(conn network.Conn, data []byte) {
 		pkt, err := codec.DecodeBytes(data, packetCfg)
 		if err != nil {
 			return
@@ -67,21 +71,29 @@ func main() {
 		if !runner.SeqCtx().Resolve(pkt.Seq, pkt.Data) {
 			runner.SeqCtx().ResolveFirst(pkt.Data)
 		}
-	})
+	}
 
-	// TCP 连接状态推送
-	tcpClient.OnConnect(func(conn network.Conn) {
+	// 连接状态推送
+	onConnect := func(conn network.Conn) {
 		srv.Broadcast(api.ServerMessage{
 			Event:   "conn.status",
 			Payload: map[string]any{"state": "connected", "addr": conn.RemoteAddr().String()},
 		})
-	})
-	tcpClient.OnDisconnect(func(conn network.Conn, err error) {
+	}
+	onDisconnect := func(conn network.Conn, err error) {
 		srv.Broadcast(api.ServerMessage{
 			Event:   "conn.status",
 			Payload: map[string]any{"state": "disconnected"},
 		})
-	})
+	}
+
+	// 为 TCP 和 WebSocket 客户端注册相同的回调
+	tcpClient.OnReceive(onReceive)
+	tcpClient.OnConnect(onConnect)
+	tcpClient.OnDisconnect(onDisconnect)
+	wsClient.OnReceive(onReceive)
+	wsClient.OnConnect(onConnect)
+	wsClient.OnDisconnect(onDisconnect)
 
 	// 启动 HTTP/WS 服务(固定端口, 与前端 fallback 一致)
 	_, err = srv.Start(58996)
@@ -97,14 +109,16 @@ func main() {
 
 	// 优雅退出
 	tcpClient.Disconnect()
+	wsClient.Disconnect()
 	srv.Stop()
 }
 
-func registerConnHandlers(srv *api.Server, client *network.TCPClient, packetCfg *codec.PacketConfig, runner *engine.Runner) {
+func registerConnHandlers(srv *api.Server, tcpClient *network.TCPClient, wsClient *network.WSClient, activeClient *network.Client, packetCfg *codec.PacketConfig, runner *engine.Runner) {
 	srv.Handle("conn.connect", func(payload json.RawMessage) (any, error) {
 		var req struct {
 			Host        string `json:"host"`
 			Port        int    `json:"port"`
+			Protocol    string `json:"protocol"`
 			Timeout     int    `json:"timeout"`
 			Reconnect   bool   `json:"reconnect"`
 			Heartbeat   bool   `json:"heartbeat"`
@@ -146,7 +160,8 @@ func registerConnHandlers(srv *api.Server, client *network.TCPClient, packetCfg 
 					SeqBytes:   seqBytes,
 				}
 				*packetCfg = newCfg
-				client.SetPacketConfig(newCfg)
+				tcpClient.SetPacketConfig(newCfg)
+				wsClient.SetPacketConfig(newCfg)
 				runner.SetPacketConfig(newCfg)
 			} else {
 				// 字段驱动模式
@@ -167,22 +182,35 @@ func registerConnHandlers(srv *api.Server, client *network.TCPClient, packetCfg 
 					FieldDriven: fdCfg,
 				}
 				*packetCfg = newCfg
-				client.SetPacketConfig(newCfg)
+				tcpClient.SetPacketConfig(newCfg)
+				wsClient.SetPacketConfig(newCfg)
 				runner.SetPacketConfig(newCfg)
 			}
 		}
 
 		addr := fmt.Sprintf("%s:%d", req.Host, req.Port)
 
-		client.SetReconnectConfig(network.ReconnectConfig{
+		reconnectCfg := network.ReconnectConfig{
 			Enable:      req.Reconnect,
 			MaxRetries:  10,
 			InitialWait: 1 * time.Second,
 			MaxWait:     30 * time.Second,
 			Multiplier:  2.0,
-		})
+		}
 
-		if err := client.Connect(addr); err != nil {
+		// 先断开当前活跃连接
+		(*activeClient).Disconnect()
+
+		// 根据 protocol 选择客户端
+		if req.Protocol == "ws" {
+			*activeClient = wsClient
+			wsClient.SetReconnectConfig(reconnectCfg)
+		} else {
+			*activeClient = tcpClient
+			tcpClient.SetReconnectConfig(reconnectCfg)
+		}
+
+		if err := (*activeClient).Connect(addr); err != nil {
 			return nil, fmt.Errorf("connect failed: %w", err)
 		}
 
@@ -190,14 +218,14 @@ func registerConnHandlers(srv *api.Server, client *network.TCPClient, packetCfg 
 	})
 
 	srv.Handle("conn.disconnect", func(payload json.RawMessage) (any, error) {
-		if err := client.Disconnect(); err != nil {
+		if err := (*activeClient).Disconnect(); err != nil {
 			return nil, fmt.Errorf("disconnect failed: %w", err)
 		}
 		return map[string]string{"status": "disconnected"}, nil
 	})
 
 	srv.Handle("conn.status", func(payload json.RawMessage) (any, error) {
-		return map[string]string{"state": client.State().String()}, nil
+		return map[string]string{"state": (*activeClient).State().String()}, nil
 	})
 }
 

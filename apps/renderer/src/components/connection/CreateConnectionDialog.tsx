@@ -150,6 +150,7 @@ export function CreateConnectionDialog({
     setTesting(true)
     try {
       await connectTCP(host, port, {
+        protocol,
         timeout: 5000,
         reconnect: false,
         heartbeat: false,
@@ -750,7 +751,7 @@ export function CreateConnectionDialog({
                       <DropdownMenuContent align="start" className="min-w-[var(--radix-dropdown-menu-trigger-width)]">
                         <DropdownMenuRadioGroup value={protocol} onValueChange={(v) => setProtocol(v as 'tcp' | 'ws')}>
                           <DropdownMenuRadioItem value="tcp">TCP</DropdownMenuRadioItem>
-                          <DropdownMenuRadioItem value="ws">WebSocket 网关</DropdownMenuRadioItem>
+                          <DropdownMenuRadioItem value="ws">WebSocket</DropdownMenuRadioItem>
                         </DropdownMenuRadioGroup>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -795,9 +796,6 @@ export function CreateConnectionDialog({
                         {testing && <Loader2 className="w-4 h-4 animate-spin" />}
                         {testing ? '测试中...' : '测试连接'}
                       </Button>
-                      <FieldDescription className="px-6 text-center">
-                        测试将尝试与目标服务器建立 TCP 连接
-                      </FieldDescription>
                     </Field>
                   </FieldGroup>
                 </FieldGroup>

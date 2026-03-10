@@ -4,7 +4,7 @@ import type { FrameField } from '@/types/frame'
 export type ConnState = 'disconnected' | 'connecting' | 'connected' | 'reconnecting'
 
 export interface ConnectionConfig {
-  protocol: 'tcp'
+  protocol: 'tcp' | 'ws'
   host: string
   port: number
   timeout: number

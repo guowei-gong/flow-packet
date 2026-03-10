@@ -7,6 +7,7 @@ const API_BASE = () => {
 
 // TCP 连接管理
 export async function connectTCP(host: string, port: number, options?: {
+  protocol?: 'tcp' | 'ws'
   timeout?: number
   reconnect?: boolean
   heartbeat?: boolean

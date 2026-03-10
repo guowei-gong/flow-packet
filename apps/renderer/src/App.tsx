@@ -124,8 +124,9 @@ function App() {
       setRouteMappings((result.routes ?? []) as import('@/stores/protoStore').RouteMapping[])
     }).catch(() => {})
 
-    // 自动建立 TCP 连接，成功时 toast 提示，失败时 toast 提示但不阻塞进入画布
+    // 自动建立连接, 成功时 toast 提示, 失败时 toast 提示但不阻塞进入画布
     connectTCP(connection.host, connection.port, {
+      protocol: connection.protocol,
       reconnect: true,
       heartbeat: true,
       frameFields: connection.frameConfig?.fields,
@@ -134,7 +135,7 @@ function App() {
         description: `已连接到 ${connection.host}:${connection.port}`,
       })
     }).catch((err) => {
-      toast.error('TCP 连接失败', {
+      toast.error('连接失败', {
         description: err instanceof Error ? err.message : String(err),
       })
     })
