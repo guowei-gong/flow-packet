@@ -10,8 +10,7 @@ export type SidebarTab = '画布' | '集合' | '连接配置'
 
 const navItems: { icon: typeof LayoutDashboard; label: SidebarTab }[] = [
   { icon: LayoutDashboard, label: '画布' },
-  { icon: Library, label: '集合' },
-  { icon: Plug, label: '连接配置' },
+  { icon: Library, label: '集合' }
 ]
 
 export function AppSidebar({

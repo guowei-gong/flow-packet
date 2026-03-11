@@ -24,10 +24,11 @@ type ConnState struct {
 
 // AppState 应用状态, 在各 handler 间共享
 type AppState struct {
-	DataDir      string // 数据根目录
-	TemplateFile string // 模板 JSON 文件路径(全局共享)
-	mu           sync.RWMutex
-	connections  map[string]*ConnState
+	DataDir        string // 数据根目录
+	TemplateFile   string // 模板 JSON 文件路径(全局共享)
+	CollectionFile string // 集合 JSON 文件路径(全局共享)
+	mu             sync.RWMutex
+	connections    map[string]*ConnState
 }
 
 // connIDRe 校验 connectionId 格式, 防止路径穿越
@@ -109,9 +110,10 @@ type RouteMapping struct {
 //   - *AppState: 初始化完成的应用状态
 func NewAppState(dataDir string) *AppState {
 	return &AppState{
-		DataDir:      dataDir,
-		TemplateFile: filepath.Join(dataDir, "templates.json"),
-		connections:  make(map[string]*ConnState),
+		DataDir:        dataDir,
+		TemplateFile:   filepath.Join(dataDir, "templates.json"),
+		CollectionFile: filepath.Join(dataDir, "collections.json"),
+		connections:    make(map[string]*ConnState),
 	}
 }
 
@@ -128,6 +130,16 @@ func RegisterHandlers(srv *Server, state *AppState) {
 	srv.Handle("template.list", makeTemplateListHandler(state))
 	srv.Handle("template.save", makeTemplateSaveHandler(state))
 	srv.Handle("template.delete", makeTemplateDeleteHandler(state))
+
+	// 集合管理
+	srv.Handle("collection.list", makeCollectionListHandler(state))
+	srv.Handle("collection.save", makeCollectionSaveHandler(state))
+	srv.Handle("collection.update", makeCollectionUpdateHandler(state))
+	srv.Handle("collection.rename", makeCollectionRenameHandler(state))
+	srv.Handle("collection.delete", makeCollectionDeleteHandler(state))
+	srv.Handle("collection.folder.create", makeCollectionFolderCreateHandler(state))
+	srv.Handle("collection.folder.rename", makeCollectionFolderRenameHandler(state))
+	srv.Handle("collection.folder.delete", makeCollectionFolderDeleteHandler(state))
 }
 
 // makeProtoUploadHandler 创建 Proto 文件上传处理函数
@@ -438,6 +450,355 @@ func makeTemplateDeleteHandler(state *AppState) HandlerFunc {
 
 		if err := writeTemplates(state.TemplateFile, filtered); err != nil {
 			return nil, fmt.Errorf("failed to save templates: %w", err)
+		}
+		return map[string]string{"status": "ok"}, nil
+	}
+}
+
+// CollectionFolder 集合文件夹
+type CollectionFolder struct {
+	ID        string `json:"id"`
+	Name      string `json:"name"`
+	ParentID  string `json:"parentId"`
+	CreatedAt int64  `json:"createdAt"`
+}
+
+// CollectionItem 集合中保存的画布
+type CollectionItem struct {
+	ID        string          `json:"id"`
+	Name      string          `json:"name"`
+	FolderID  string          `json:"folderId"`
+	Nodes     json.RawMessage `json:"nodes"`
+	Edges     json.RawMessage `json:"edges"`
+	CreatedAt int64           `json:"createdAt"`
+	UpdatedAt int64           `json:"updatedAt"`
+}
+
+// CollectionData 集合持久化数据
+type CollectionData struct {
+	Folders []CollectionFolder `json:"folders"`
+	Items   []CollectionItem   `json:"items"`
+}
+
+// readCollections 从文件读取集合数据, 文件不存在时返回空数据
+func readCollections(path string) (*CollectionData, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return &CollectionData{
+				Folders: []CollectionFolder{},
+				Items:   []CollectionItem{},
+			}, nil
+		}
+		return nil, err
+	}
+	var col CollectionData
+	if err := json.Unmarshal(data, &col); err != nil {
+		return nil, err
+	}
+	if col.Folders == nil {
+		col.Folders = []CollectionFolder{}
+	}
+	if col.Items == nil {
+		col.Items = []CollectionItem{}
+	}
+	return &col, nil
+}
+
+// writeCollections 将集合数据写入文件
+func writeCollections(path string, col *CollectionData) error {
+	data, err := json.MarshalIndent(col, "", "  ")
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(path, data, 0644)
+}
+
+// makeCollectionListHandler 创建 collection.list 处理函数
+func makeCollectionListHandler(state *AppState) HandlerFunc {
+	return func(payload json.RawMessage) (any, error) {
+		col, err := readCollections(state.CollectionFile)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read collections: %w", err)
+		}
+		return col, nil
+	}
+}
+
+// makeCollectionSaveHandler 创建 collection.save 处理函数, 保存新画布到集合
+func makeCollectionSaveHandler(state *AppState) HandlerFunc {
+	return func(payload json.RawMessage) (any, error) {
+		var req struct {
+			Name     string          `json:"name"`
+			FolderID string          `json:"folderId"`
+			Nodes    json.RawMessage `json:"nodes"`
+			Edges    json.RawMessage `json:"edges"`
+		}
+		if err := json.Unmarshal(payload, &req); err != nil {
+			return nil, fmt.Errorf("invalid payload: %w", err)
+		}
+		if req.Name == "" {
+			return nil, fmt.Errorf("name is required")
+		}
+
+		col, err := readCollections(state.CollectionFile)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read collections: %w", err)
+		}
+
+		now := time.Now().UnixMilli()
+		item := CollectionItem{
+			ID:        fmt.Sprintf("col_%d", now),
+			Name:      req.Name,
+			FolderID:  req.FolderID,
+			Nodes:     req.Nodes,
+			Edges:     req.Edges,
+			CreatedAt: now,
+			UpdatedAt: now,
+		}
+		col.Items = append(col.Items, item)
+
+		if err := writeCollections(state.CollectionFile, col); err != nil {
+			return nil, fmt.Errorf("failed to save collections: %w", err)
+		}
+		return map[string]any{"item": item}, nil
+	}
+}
+
+// makeCollectionUpdateHandler 创建 collection.update 处理函数, 更新已有集合的画布数据
+func makeCollectionUpdateHandler(state *AppState) HandlerFunc {
+	return func(payload json.RawMessage) (any, error) {
+		var req struct {
+			ID    string          `json:"id"`
+			Nodes json.RawMessage `json:"nodes"`
+			Edges json.RawMessage `json:"edges"`
+		}
+		if err := json.Unmarshal(payload, &req); err != nil {
+			return nil, fmt.Errorf("invalid payload: %w", err)
+		}
+		if req.ID == "" {
+			return nil, fmt.Errorf("id is required")
+		}
+
+		col, err := readCollections(state.CollectionFile)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read collections: %w", err)
+		}
+
+		found := false
+		for i, item := range col.Items {
+			if item.ID == req.ID {
+				col.Items[i].Nodes = req.Nodes
+				col.Items[i].Edges = req.Edges
+				col.Items[i].UpdatedAt = time.Now().UnixMilli()
+				found = true
+				break
+			}
+		}
+		if !found {
+			return nil, fmt.Errorf("collection not found: %s", req.ID)
+		}
+
+		if err := writeCollections(state.CollectionFile, col); err != nil {
+			return nil, fmt.Errorf("failed to save collections: %w", err)
+		}
+		return map[string]string{"status": "ok"}, nil
+	}
+}
+
+// makeCollectionRenameHandler 创建 collection.rename 处理函数
+func makeCollectionRenameHandler(state *AppState) HandlerFunc {
+	return func(payload json.RawMessage) (any, error) {
+		var req struct {
+			ID   string `json:"id"`
+			Name string `json:"name"`
+		}
+		if err := json.Unmarshal(payload, &req); err != nil {
+			return nil, fmt.Errorf("invalid payload: %w", err)
+		}
+		if req.ID == "" || req.Name == "" {
+			return nil, fmt.Errorf("id and name are required")
+		}
+
+		col, err := readCollections(state.CollectionFile)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read collections: %w", err)
+		}
+
+		found := false
+		for i, item := range col.Items {
+			if item.ID == req.ID {
+				col.Items[i].Name = req.Name
+				col.Items[i].UpdatedAt = time.Now().UnixMilli()
+				found = true
+				break
+			}
+		}
+		if !found {
+			return nil, fmt.Errorf("collection not found: %s", req.ID)
+		}
+
+		if err := writeCollections(state.CollectionFile, col); err != nil {
+			return nil, fmt.Errorf("failed to save collections: %w", err)
+		}
+		return map[string]string{"status": "ok"}, nil
+	}
+}
+
+// makeCollectionDeleteHandler 创建 collection.delete 处理函数
+func makeCollectionDeleteHandler(state *AppState) HandlerFunc {
+	return func(payload json.RawMessage) (any, error) {
+		var req struct {
+			ID string `json:"id"`
+		}
+		if err := json.Unmarshal(payload, &req); err != nil {
+			return nil, fmt.Errorf("invalid payload: %w", err)
+		}
+		if req.ID == "" {
+			return nil, fmt.Errorf("id is required")
+		}
+
+		col, err := readCollections(state.CollectionFile)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read collections: %w", err)
+		}
+
+		filtered := make([]CollectionItem, 0, len(col.Items))
+		for _, item := range col.Items {
+			if item.ID != req.ID {
+				filtered = append(filtered, item)
+			}
+		}
+		col.Items = filtered
+
+		if err := writeCollections(state.CollectionFile, col); err != nil {
+			return nil, fmt.Errorf("failed to save collections: %w", err)
+		}
+		return map[string]string{"status": "ok"}, nil
+	}
+}
+
+// makeCollectionFolderCreateHandler 创建 collection.folder.create 处理函数
+func makeCollectionFolderCreateHandler(state *AppState) HandlerFunc {
+	return func(payload json.RawMessage) (any, error) {
+		var req struct {
+			Name     string `json:"name"`
+			ParentID string `json:"parentId"`
+		}
+		if err := json.Unmarshal(payload, &req); err != nil {
+			return nil, fmt.Errorf("invalid payload: %w", err)
+		}
+		if req.Name == "" {
+			return nil, fmt.Errorf("name is required")
+		}
+
+		col, err := readCollections(state.CollectionFile)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read collections: %w", err)
+		}
+
+		folder := CollectionFolder{
+			ID:        fmt.Sprintf("folder_%d", time.Now().UnixMilli()),
+			Name:      req.Name,
+			ParentID:  req.ParentID,
+			CreatedAt: time.Now().UnixMilli(),
+		}
+		col.Folders = append(col.Folders, folder)
+
+		if err := writeCollections(state.CollectionFile, col); err != nil {
+			return nil, fmt.Errorf("failed to save collections: %w", err)
+		}
+		return map[string]any{"folder": folder}, nil
+	}
+}
+
+// makeCollectionFolderRenameHandler 创建 collection.folder.rename 处理函数
+func makeCollectionFolderRenameHandler(state *AppState) HandlerFunc {
+	return func(payload json.RawMessage) (any, error) {
+		var req struct {
+			ID   string `json:"id"`
+			Name string `json:"name"`
+		}
+		if err := json.Unmarshal(payload, &req); err != nil {
+			return nil, fmt.Errorf("invalid payload: %w", err)
+		}
+		if req.ID == "" || req.Name == "" {
+			return nil, fmt.Errorf("id and name are required")
+		}
+
+		col, err := readCollections(state.CollectionFile)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read collections: %w", err)
+		}
+
+		found := false
+		for i, f := range col.Folders {
+			if f.ID == req.ID {
+				col.Folders[i].Name = req.Name
+				found = true
+				break
+			}
+		}
+		if !found {
+			return nil, fmt.Errorf("folder not found: %s", req.ID)
+		}
+
+		if err := writeCollections(state.CollectionFile, col); err != nil {
+			return nil, fmt.Errorf("failed to save collections: %w", err)
+		}
+		return map[string]string{"status": "ok"}, nil
+	}
+}
+
+// makeCollectionFolderDeleteHandler 创建 collection.folder.delete 处理函数, 同时删除文件夹下所有子文件夹和集合
+func makeCollectionFolderDeleteHandler(state *AppState) HandlerFunc {
+	return func(payload json.RawMessage) (any, error) {
+		var req struct {
+			ID string `json:"id"`
+		}
+		if err := json.Unmarshal(payload, &req); err != nil {
+			return nil, fmt.Errorf("invalid payload: %w", err)
+		}
+		if req.ID == "" {
+			return nil, fmt.Errorf("id is required")
+		}
+
+		col, err := readCollections(state.CollectionFile)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read collections: %w", err)
+		}
+
+		// 递归收集所有要删除的文件夹 ID
+		deleteIDs := map[string]bool{req.ID: true}
+		changed := true
+		for changed {
+			changed = false
+			for _, f := range col.Folders {
+				if deleteIDs[f.ParentID] && !deleteIDs[f.ID] {
+					deleteIDs[f.ID] = true
+					changed = true
+				}
+			}
+		}
+
+		// 过滤文件夹和集合
+		filteredFolders := make([]CollectionFolder, 0, len(col.Folders))
+		for _, f := range col.Folders {
+			if !deleteIDs[f.ID] {
+				filteredFolders = append(filteredFolders, f)
+			}
+		}
+		filteredItems := make([]CollectionItem, 0, len(col.Items))
+		for _, item := range col.Items {
+			if !deleteIDs[item.FolderID] {
+				filteredItems = append(filteredItems, item)
+			}
+		}
+		col.Folders = filteredFolders
+		col.Items = filteredItems
+
+		if err := writeCollections(state.CollectionFile, col); err != nil {
+			return nil, fmt.Errorf("failed to save collections: %w", err)
 		}
 		return map[string]string{"status": "ok"}, nil
 	}

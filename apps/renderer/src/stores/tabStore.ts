@@ -21,6 +21,7 @@ interface TabStore {
   switchTab: (tabId: string) => void
   closeTab: (tabId: string) => void
   markClean: (tabId: string) => void
+  setCollectionId: (tabId: string, collectionId: string) => void
   /** Sync current canvas state back into active tab (called before switch/close) */
   _saveActiveTab: () => void
 }
@@ -60,6 +61,12 @@ export const useTabStore = create<TabStore>((set, get) => ({
   markClean: (tabId) => {
     set((s) => ({
       tabs: s.tabs.map((t) => (t.id === tabId ? { ...t, dirty: false } : t)),
+    }))
+  },
+
+  setCollectionId: (tabId, collectionId) => {
+    set((s) => ({
+      tabs: s.tabs.map((t) => (t.id === tabId ? { ...t, collectionId } : t)),
     }))
   },
 

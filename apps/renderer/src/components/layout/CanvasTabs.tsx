@@ -1,18 +1,9 @@
 import { useRef, useState, useEffect, useCallback } from 'react'
 import { LayoutDashboard, Plus, X, ChevronLeft, ChevronRight } from 'lucide-react'
-import {
-  AlertDialog,
-  AlertDialogContent,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogCancel,
-  AlertDialogAction,
-} from '@/components/ui/alert-dialog'
 import { useTabStore, type CanvasTab } from '@/stores/tabStore'
 import { useCanvasStore } from '@/stores/canvasStore'
 import { useCollectionStore } from '@/stores/collectionStore'
+import { SaveCollectionDialog } from '@/components/collection/SaveCollectionDialog'
 import { cn } from '@/lib/utils'
 
 export function CanvasTabs() {
@@ -22,8 +13,10 @@ export function CanvasTabs() {
   const switchTab = useTabStore((s) => s.switchTab)
   const closeTab = useTabStore((s) => s.closeTab)
   const markClean = useTabStore((s) => s.markClean)
+  const setCollectionId = useTabStore((s) => s.setCollectionId)
 
   const [closingTab, setClosingTab] = useState<CanvasTab | null>(null)
+  const [saveDialogOpen, setSaveDialogOpen] = useState(false)
 
   const scrollRef = useRef<HTMLDivElement>(null)
   const [showLeft, setShowLeft] = useState(false)
@@ -61,25 +54,36 @@ export function CanvasTabs() {
   const handleCloseClick = (tab: CanvasTab) => {
     if (tab.dirty) {
       setClosingTab(tab)
+      if (tab.collectionId) {
+        // 已保存过的集合, 直接覆盖保存并关闭
+        const canvas = useCanvasStore.getState()
+        useCollectionStore.getState().updateCollection(tab.collectionId, canvas.nodes, canvas.edges)
+        markClean(tab.id)
+        closeTab(tab.id)
+      } else {
+        // 新画布, 打开保存对话框
+        setSaveDialogOpen(true)
+      }
     } else {
       closeTab(tab.id)
     }
   }
 
-  const handleSave = () => {
+  const handleSaveDialogConfirm = async (name: string, folderId: string) => {
     if (!closingTab) return
-    if (closingTab.collectionId) {
-      const canvas = useCanvasStore.getState()
-      useCollectionStore.getState().updateCollection(closingTab.collectionId, canvas.nodes, canvas.edges)
-      markClean(closingTab.id)
-    }
+    const canvas = useCanvasStore.getState()
+    const collectionId = await useCollectionStore.getState().saveCollection(
+      name, folderId, canvas.nodes, canvas.edges
+    )
+    setCollectionId(closingTab.id, collectionId)
+    markClean(closingTab.id)
     closeTab(closingTab.id)
     setClosingTab(null)
+    setSaveDialogOpen(false)
   }
 
-  const handleDiscard = () => {
-    if (!closingTab) return
-    closeTab(closingTab.id)
+  const handleSaveDialogCancel = () => {
+    setSaveDialogOpen(false)
     setClosingTab(null)
   }
 
@@ -160,28 +164,14 @@ export function CanvasTabs() {
         )}
       </div>
 
-      {/* Unsaved changes confirmation */}
-      <AlertDialog open={!!closingTab} onOpenChange={(open) => !open && setClosingTab(null)}>
-        <AlertDialogContent className="sm:max-w-[360px]">
-          <AlertDialogHeader>
-            <AlertDialogTitle>保存更改</AlertDialogTitle>
-            <AlertDialogDescription>
-              {closingTab?.name} 的修改内容尚未保存，是否保存？
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setClosingTab(null)}>
-              取消
-            </AlertDialogCancel>
-            <AlertDialogAction variant="outline" onClick={handleDiscard}>
-              不保存
-            </AlertDialogAction>
-            <AlertDialogAction onClick={handleSave}>
-              保存
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <SaveCollectionDialog
+        open={saveDialogOpen}
+        defaultName={closingTab?.name ?? ''}
+        onOpenChange={(open) => {
+          if (!open) handleSaveDialogCancel()
+        }}
+        onSave={handleSaveDialogConfirm}
+      />
     </>
   )
 }

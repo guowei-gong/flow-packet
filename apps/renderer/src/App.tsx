@@ -21,6 +21,7 @@ import { useTabStore } from '@/stores/tabStore'
 import { useCanvasStore, type RequestNodeData } from '@/stores/canvasStore'
 import { useProtoStore } from '@/stores/protoStore'
 import { useConnectionStore } from '@/stores/connectionStore'
+import { useCollectionStore } from '@/stores/collectionStore'
 import type { SavedConnection } from '@/stores/savedConnectionStore'
 import { ThemeToggle } from '@/components/layout/ThemeToggle'
 
@@ -88,6 +89,7 @@ function App() {
       setConnectionStatusCallback((connected) => {
         if (connected) {
           console.log('[ws] connected to backend')
+          useCollectionStore.getState().loadCollections().catch(() => {})
         }
       })
 

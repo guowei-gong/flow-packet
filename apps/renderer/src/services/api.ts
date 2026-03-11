@@ -82,6 +82,46 @@ export async function deleteTemplate(id: string) {
   return sendRequest('template.delete', { id })
 }
 
+// 集合管理
+export async function listCollections() {
+  return sendRequest('collection.list') as Promise<{
+    folders: { id: string; name: string; parentId: string; createdAt: number }[]
+    items: { id: string; name: string; folderId: string; nodes: unknown[]; edges: unknown[]; createdAt: number; updatedAt: number }[]
+  }>
+}
+
+export async function saveCollection(name: string, folderId: string, nodes: unknown[], edges: unknown[]) {
+  return sendRequest('collection.save', { name, folderId, nodes, edges }) as Promise<{
+    item: { id: string; name: string; folderId: string; nodes: unknown[]; edges: unknown[]; createdAt: number; updatedAt: number }
+  }>
+}
+
+export async function updateCollection(id: string, nodes: unknown[], edges: unknown[]) {
+  return sendRequest('collection.update', { id, nodes, edges })
+}
+
+export async function renameCollection(id: string, name: string) {
+  return sendRequest('collection.rename', { id, name })
+}
+
+export async function deleteCollection(id: string) {
+  return sendRequest('collection.delete', { id })
+}
+
+export async function createCollectionFolder(name: string, parentId: string) {
+  return sendRequest('collection.folder.create', { name, parentId }) as Promise<{
+    folder: { id: string; name: string; parentId: string; createdAt: number }
+  }>
+}
+
+export async function renameCollectionFolder(id: string, name: string) {
+  return sendRequest('collection.folder.rename', { id, name })
+}
+
+export async function deleteCollectionFolder(id: string) {
+  return sendRequest('collection.folder.delete', { id })
+}
+
 // 流程执行
 export async function executeFlow(nodes: unknown[], edges: unknown[], connectionId: string) {
   return sendRequest('flow.execute', { nodes, edges, connectionId })
