@@ -1,3 +1,6 @@
+import { useState, useMemo, useCallback } from 'react'
+import { ChevronRight, Copy, Check } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { useExecutionStore, type LogEntry } from '@/stores/executionStore'
 
@@ -14,6 +17,8 @@ const typeLabels: Record<string, string> = {
   error: 'ERR',
   info: 'INF',
 }
+
+const COLLAPSE_THRESHOLD = 200
 
 export function LogPanel() {
   const logs = useExecutionStore((s) => s.logs)
@@ -35,6 +40,9 @@ export function LogPanel() {
 }
 
 function LogRow({ log }: { log: LogEntry }) {
+  const [expanded, setExpanded] = useState(false)
+  const [copied, setCopied] = useState(false)
+
   const time = new Date(log.timestamp).toLocaleTimeString('zh-CN', {
     hour12: false,
     hour: '2-digit',
@@ -44,7 +52,19 @@ function LogRow({ log }: { log: LogEntry }) {
   })
 
   const hasData = Object.keys(log.data).length > 0
-  const formatted = hasData ? formatData(log.data) : ''
+  const formatted = useMemo(() => hasData ? formatData(log.data) : '', [log.data, hasData])
+  const isLong = formatted.length > COLLAPSE_THRESHOLD
+  const preview = useMemo(
+    () => isLong ? formatCompact(log.data) : '',
+    [log.data, isLong],
+  )
+
+  const handleCopy = useCallback(() => {
+    navigator.clipboard.writeText(formatted).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    })
+  }, [formatted])
 
   return (
     <div className="py-0.5">
@@ -60,14 +80,45 @@ function LogRow({ log }: { log: LogEntry }) {
         {log.messageName && (
           <span className="text-blue-400">{shortName(log.messageName)}</span>
         )}
+        {isLong && (
+          <button
+            onClick={() => setExpanded((v) => !v)}
+            className="inline-flex items-center text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <ChevronRight className={cn('size-3 transition-transform', expanded && 'rotate-90')} />
+          </button>
+        )}
+        {formatted && (
+          <button
+            onClick={handleCopy}
+            className="inline-flex items-center text-muted-foreground hover:text-foreground transition-colors"
+            title="复制"
+          >
+            {copied
+              ? <Check className="size-3 text-green-500" />
+              : <Copy className="size-3" />}
+          </button>
+        )}
         {log.duration !== undefined && (
-          <span className="text-muted-foreground">{log.duration}ms</span>
+          <span className="text-muted-foreground ml-auto">{log.duration}ms</span>
         )}
       </div>
       {formatted && (
-        <pre className="text-foreground whitespace-pre-wrap break-all mt-0.5" style={{ paddingLeft: 80 }}>
-          {formatted}
-        </pre>
+        isLong ? (
+          expanded ? (
+            <pre className="text-foreground whitespace-pre-wrap break-all mt-0.5" style={{ paddingLeft: 80 }}>
+              {formatted}
+            </pre>
+          ) : (
+            <div className="text-foreground truncate mt-0.5" style={{ paddingLeft: 80 }}>
+              {preview}
+            </div>
+          )
+        ) : (
+          <pre className="text-foreground whitespace-pre-wrap break-all mt-0.5" style={{ paddingLeft: 80 }}>
+            {formatted}
+          </pre>
+        )
       )}
     </div>
   )
@@ -81,6 +132,14 @@ function shortName(fullName: string): string {
 function formatData(data: Record<string, unknown>): string {
   try {
     return JSON.stringify(data, null, 2)
+  } catch {
+    return String(data)
+  }
+}
+
+function formatCompact(data: Record<string, unknown>): string {
+  try {
+    return JSON.stringify(data)
   } catch {
     return String(data)
   }
