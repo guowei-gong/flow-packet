@@ -26,6 +26,8 @@ export function initEventBindings(): () => void {
     subscribe('node.result', (payload) => {
       const data = payload as {
         nodeId: string
+        requestMsg?: string
+        responseMsg?: string
         request?: Record<string, unknown>
         response?: Record<string, unknown>
         duration?: number
@@ -37,26 +39,24 @@ export function initEventBindings(): () => void {
         status: 'success',
       })
 
-      if (data.request) {
-        store.addLog({
-          id: crypto.randomUUID(),
-          timestamp: Date.now(),
-          nodeId: data.nodeId,
-          type: 'request',
-          data: data.request,
-        })
-      }
+      store.addLog({
+        id: crypto.randomUUID(),
+        timestamp: Date.now(),
+        nodeId: data.nodeId,
+        type: 'request',
+        messageName: data.requestMsg,
+        data: data.request ?? {},
+      })
 
-      if (data.response) {
-        store.addLog({
-          id: crypto.randomUUID(),
-          timestamp: Date.now(),
-          nodeId: data.nodeId,
-          type: 'response',
-          data: data.response,
-          duration: data.duration,
-        })
-      }
+      store.addLog({
+        id: crypto.randomUUID(),
+        timestamp: Date.now(),
+        nodeId: data.nodeId,
+        type: 'response',
+        messageName: data.responseMsg,
+        data: data.response ?? {},
+        duration: data.duration,
+      })
     })
   )
 

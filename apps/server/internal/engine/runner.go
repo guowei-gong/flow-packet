@@ -26,12 +26,14 @@ type FlowEdge struct {
 
 // NodeResult 节点执行结果
 type NodeResult struct {
-	NodeID   string         `json:"nodeId"`
-	Success  bool           `json:"success"`
-	Request  map[string]any `json:"request,omitempty"`
-	Response map[string]any `json:"response,omitempty"`
-	Error    string         `json:"error,omitempty"`
-	Duration int64          `json:"duration"` // 毫秒
+	NodeID      string         `json:"nodeId"`
+	Success     bool           `json:"success"`
+	RequestMsg  string         `json:"requestMsg,omitempty"`
+	ResponseMsg string         `json:"responseMsg,omitempty"`
+	Request     map[string]any `json:"request"`
+	Response    map[string]any `json:"response"`
+	Error       string         `json:"error,omitempty"`
+	Duration    int64          `json:"duration"` // 毫秒
 }
 
 // NodeCallback 节点完成回调
@@ -224,8 +226,9 @@ func (r *Runner) executeNode(ctx context.Context, node *FlowNode) NodeResult {
 	start := time.Now()
 
 	result := NodeResult{
-		NodeID:  node.ID,
-		Request: node.Fields,
+		NodeID:     node.ID,
+		RequestMsg: node.MessageName,
+		Request:    node.Fields,
 	}
 
 	// 解析 message descriptor
@@ -292,6 +295,9 @@ func (r *Runner) executeNode(ctx context.Context, node *FlowNode) NodeResult {
 	var respMd protoreflect.MessageDescriptor
 	if r.responseResolver != nil {
 		respMd = r.responseResolver(node.Route)
+	}
+	if respMd != nil {
+		result.ResponseMsg = string(respMd.FullName())
 	}
 
 	respFrame, err := codec.DynamicDecode(respData, respMd)

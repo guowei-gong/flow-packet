@@ -7,6 +7,7 @@ export interface LogEntry {
   timestamp: number
   nodeId: string
   type: 'request' | 'response' | 'error' | 'info'
+  messageName?: string
   data: Record<string, unknown>
   duration?: number
 }
