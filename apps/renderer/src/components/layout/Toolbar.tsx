@@ -35,7 +35,7 @@ export function Toolbar({ onBack }: ToolbarProps) {
   const isConnected = connState === 'connected'
 
   const handleRun = async () => {
-    if (!isConnected || isRunning || nodes.length === 0 || !activeConnectionId) return
+    if (!isConnected || execStatus === 'running' || nodes.length === 0 || !activeConnectionId) return
     try {
       const flowNodes = nodes.map((n) => ({
         id: n.id,
