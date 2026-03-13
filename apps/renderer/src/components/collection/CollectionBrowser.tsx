@@ -1,20 +1,25 @@
 import { useState, useEffect, useRef } from 'react'
-import { MoreHorizontal, Pencil, Trash2, Folder, FolderPlus, ChevronRight, LayoutDashboard, GripVertical } from 'lucide-react'
+import { Pencil, Trash2, Folder, FolderPlus, ChevronRight, LayoutDashboard } from 'lucide-react'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import {
   Collapsible,
   CollapsibleContent,
-  CollapsibleTrigger,
 } from '@/components/ui/collapsible'
 import {
   SidebarGroup,
   SidebarGroupContent,
   SidebarMenu,
-  SidebarMenuAction,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarMenuSub,
 } from '@/components/ui/sidebar'
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuTrigger,
+} from '@/components/ui/context-menu'
 import {
   Dialog,
   DialogContent,
@@ -22,13 +27,6 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useCollectionStore, type Collection, type CollectionFolder } from '@/stores/collectionStore'
@@ -162,6 +160,7 @@ function FolderNode({
   const deleteFolder = useCollectionStore((s) => s.deleteFolder)
   const createFolder = useCollectionStore((s) => s.createFolder)
 
+  const [isOpen, setIsOpen] = useState(false)
   const [renameOpen, setRenameOpen] = useState(false)
   const [renameName, setRenameName] = useState('')
   const [createOpen, setCreateOpen] = useState(false)
@@ -229,47 +228,41 @@ function FolderNode({
 
   return (
     <SidebarMenuItem>
-      <Collapsible className="group/collapsible">
-        <div
-          draggable
-          onDragStart={handleDragStart}
-          onDragOver={handleDragOver}
-          onDragEnter={handleDragEnter}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDropOnFolder}
-          className={`flex items-center group/folder ${dragOver ? 'bg-sidebar-accent rounded-md' : ''}`}
-        >
-          <GripVertical className="size-3 shrink-0 opacity-0 group-hover/folder:opacity-50 cursor-grab text-muted-foreground" />
-          <CollapsibleTrigger asChild>
-            <SidebarMenuButton className="flex-1">
-              <ChevronRight className="transition-transform group-data-[state=open]/collapsible:rotate-90" />
-              <Folder />
-              <span className="truncate">{folder.name}</span>
-            </SidebarMenuButton>
-          </CollapsibleTrigger>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <SidebarMenuAction showOnHover>
-                <MoreHorizontal />
-              </SidebarMenuAction>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent side="right" align="start">
-              <DropdownMenuItem onClick={() => { setNewFolderName(''); setCreateOpen(true) }}>
-                <FolderPlus />
-                <span>新建文件夹</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleRenameStart}>
-                <Pencil />
-                <span>重命名</span>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem variant="destructive" onClick={() => deleteFolder(folder.id)}>
-                <Trash2 />
-                <span>删除</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+      <Collapsible open={isOpen} onOpenChange={setIsOpen} className="group/collapsible">
+        <ContextMenu>
+          <ContextMenuTrigger asChild>
+            <div
+              draggable
+              onDragStart={handleDragStart}
+              onDragOver={handleDragOver}
+              onDragEnter={handleDragEnter}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDropOnFolder}
+              className={dragOver ? 'bg-sidebar-accent rounded-md' : ''}
+            >
+              <SidebarMenuButton onClick={() => setIsOpen((v) => !v)}>
+                <ChevronRight className={`transition-transform ${isOpen ? 'rotate-90' : ''}`} />
+                <Folder />
+                <span className="truncate">{folder.name}</span>
+              </SidebarMenuButton>
+            </div>
+          </ContextMenuTrigger>
+          <ContextMenuContent>
+            <ContextMenuItem onClick={() => { setNewFolderName(''); setCreateOpen(true) }}>
+              <FolderPlus />
+              <span>新建文件夹</span>
+            </ContextMenuItem>
+            <ContextMenuItem onClick={handleRenameStart}>
+              <Pencil />
+              <span>重命名</span>
+            </ContextMenuItem>
+            <ContextMenuSeparator />
+            <ContextMenuItem variant="destructive" onClick={() => deleteFolder(folder.id)}>
+              <Trash2 />
+              <span>删除</span>
+            </ContextMenuItem>
+          </ContextMenuContent>
+        </ContextMenu>
         <CollapsibleContent>
           <SidebarMenuSub>
             {childFolders.map((f) => (
@@ -367,38 +360,33 @@ function CollectionNode({ collection }: { collection: Collection }) {
 
   return (
     <SidebarMenuItem>
-      <div
-        draggable
-        onDragStart={handleDragStart}
-        className="flex items-center group/collection"
-      >
-        <GripVertical className="size-3 shrink-0 opacity-0 group-hover/collection:opacity-50 cursor-grab text-muted-foreground" />
-        <SidebarMenuButton
-          onClick={handleLoad}
-          className="flex-1 active:bg-sidebar-accent active:text-sidebar-accent-foreground"
-        >
-          <LayoutDashboard />
-          <span className="truncate">{collection.name}</span>
-        </SidebarMenuButton>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <SidebarMenuAction showOnHover>
-              <MoreHorizontal />
-            </SidebarMenuAction>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent side="right" align="start">
-            <DropdownMenuItem onClick={handleRenameStart}>
-              <Pencil />
-              <span>重命名</span>
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem variant="destructive" onClick={handleDelete}>
-              <Trash2 />
-              <span>删除</span>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
+      <ContextMenu>
+        <ContextMenuTrigger asChild>
+          <div
+            draggable
+            onDragStart={handleDragStart}
+          >
+            <SidebarMenuButton
+              onClick={handleLoad}
+              className="active:bg-sidebar-accent active:text-sidebar-accent-foreground"
+            >
+              <LayoutDashboard />
+              <span className="truncate">{collection.name}</span>
+            </SidebarMenuButton>
+          </div>
+        </ContextMenuTrigger>
+        <ContextMenuContent>
+          <ContextMenuItem onClick={handleRenameStart}>
+            <Pencil />
+            <span>重命名</span>
+          </ContextMenuItem>
+          <ContextMenuSeparator />
+          <ContextMenuItem variant="destructive" onClick={handleDelete}>
+            <Trash2 />
+            <span>删除</span>
+          </ContextMenuItem>
+        </ContextMenuContent>
+      </ContextMenu>
 
       <Dialog open={renameOpen} onOpenChange={setRenameOpen}>
         <DialogContent className="sm:max-w-[360px]">
