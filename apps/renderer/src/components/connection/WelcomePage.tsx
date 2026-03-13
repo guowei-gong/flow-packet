@@ -7,6 +7,7 @@ import {
   Pencil,
   Trash2,
   GripVertical,
+  Github,
 } from 'lucide-react'
 import {
   DndContext,
@@ -250,7 +251,6 @@ export function WelcomePage({ onEnterConnection }: WelcomePageProps) {
               <SidebarMenuButton
                 className="data-[slot=sidebar-menu-button]:p-1.5!"
               >
-                <Plug className="size-5!" />
                 <span className="text-base font-semibold">FlowPacket</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
@@ -310,6 +310,14 @@ export function WelcomePage({ onEnterConnection }: WelcomePageProps) {
                 />
               </div>
               <ThemeToggle />
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-7"
+                onClick={() => window.open('https://github.com/guowei-gong/flow-packet', '_blank')}
+              >
+                <Github className="size-4" />
+              </Button>
             </div>
           </div>
         </header>
