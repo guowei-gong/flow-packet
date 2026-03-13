@@ -169,7 +169,7 @@ export function CanvasTabs() {
 
       <SaveCollectionDialog
         open={saveDialogOpen}
-        defaultName={closingTab?.name ?? ''}
+        defaultName={closingTab?.name === '未命名' ? '' : (closingTab?.name ?? '')}
         onOpenChange={(open) => {
           if (!open) handleSaveDialogCancel()
         }}

@@ -1,5 +1,5 @@
-import { useState, useMemo } from 'react'
-import { ArrowLeft, FolderPlus, Folder, FolderOpen } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { ChevronRight, FolderPlus, Pencil, Folder, FolderOpen } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -7,11 +7,18 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog'
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+} from '@/components/ui/context-menu'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { useCollectionStore, type CollectionFolder, type Collection } from '@/stores/collectionStore'
+import { useCollectionStore, type CollectionFolder } from '@/stores/collectionStore'
 import { useConnectionStore } from '@/stores/connectionStore'
+import { cn } from '@/lib/utils'
 
 interface SaveCollectionDialogProps {
   open: boolean
@@ -23,65 +30,67 @@ interface SaveCollectionDialogProps {
 export function SaveCollectionDialog({ open, defaultName, onOpenChange, onSave }: SaveCollectionDialogProps) {
   const activeConnectionId = useConnectionStore((s) => s.activeConnectionId)
   const folders = useCollectionStore((s) => s.folders)
-  const collections = useCollectionStore((s) => s.collections)
   const createFolder = useCollectionStore((s) => s.createFolder)
+  const renameFolder = useCollectionStore((s) => s.renameFolder)
 
-  const [name, setName] = useState(defaultName)
-  const [currentFolderId, setCurrentFolderId] = useState('')
-  const [creatingFolder, setCreatingFolder] = useState(false)
+  const [name, setName] = useState('')
+  const [selectedFolderId, setSelectedFolderId] = useState('')
+  const [creatingInFolderId, setCreatingInFolderId] = useState<string | null>(null)
   const [newFolderName, setNewFolderName] = useState('')
+  const [renamingFolderId, setRenamingFolderId] = useState<string | null>(null)
+  const [renameFolderName, setRenameFolderName] = useState('')
 
-  // 当 dialog 打开时重置状态
-  const handleOpenChange = (v: boolean) => {
-    if (v) {
+  useEffect(() => {
+    if (open) {
       setName(defaultName)
-      setCurrentFolderId('')
-      setCreatingFolder(false)
+      setSelectedFolderId('')
+      setCreatingInFolderId(null)
       setNewFolderName('')
+      setRenamingFolderId(null)
+      setRenameFolderName('')
     }
+  }, [open, defaultName])
+
+  const handleOpenChange = (v: boolean) => {
     onOpenChange(v)
   }
 
-  const currentFolderName = useMemo(() => {
-    if (!currentFolderId) return '本地'
-    return folders.find((f) => f.id === currentFolderId)?.name ?? '本地'
-  }, [currentFolderId, folders])
-
-  const parentFolderId = useMemo(() => {
-    if (!currentFolderId) return null
-    const folder = folders.find((f) => f.id === currentFolderId)
-    return folder ? folder.parentId : null
-  }, [currentFolderId, folders])
-
-  const childFolders = useMemo(
-    () => folders.filter((f) => f.parentId === currentFolderId),
-    [folders, currentFolderId]
-  )
-
-  const childCollections = useMemo(
-    () => collections.filter((c) => c.folderId === currentFolderId),
-    [collections, currentFolderId]
-  )
-
-  const handleGoBack = () => {
-    if (parentFolderId !== null) {
-      setCurrentFolderId(parentFolderId)
-    }
+  const handleCreateFolder = async (parentId: string) => {
+    const trimmed = newFolderName.trim()
+    if (!trimmed || !activeConnectionId) return
+    const folder = await createFolder(activeConnectionId, trimmed, parentId)
+    setSelectedFolderId(folder.id)
+    setCreatingInFolderId(null)
+    setNewFolderName('')
   }
 
-  const handleCreateFolder = async () => {
-    const trimmed = newFolderName.trim()
-    if (!trimmed) return
-    await createFolder(activeConnectionId!, trimmed, currentFolderId)
-    setCreatingFolder(false)
+  const handleStartCreate = (parentId: string) => {
+    setCreatingInFolderId(parentId)
     setNewFolderName('')
+  }
+
+  const handleStartRename = (folderId: string) => {
+    const folder = folders.find((f) => f.id === folderId)
+    if (!folder) return
+    setRenamingFolderId(folderId)
+    setRenameFolderName(folder.name)
+  }
+
+  const handleRenameConfirm = async () => {
+    const trimmed = renameFolderName.trim()
+    if (!trimmed || !renamingFolderId || !activeConnectionId) return
+    await renameFolder(activeConnectionId, renamingFolderId, trimmed)
+    setRenamingFolderId(null)
+    setRenameFolderName('')
   }
 
   const handleSave = () => {
     const trimmed = name.trim()
     if (!trimmed) return
-    onSave(trimmed, currentFolderId)
+    onSave(trimmed, selectedFolderId)
   }
+
+  const rootFolders = folders.filter((f) => !f.parentId)
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -91,7 +100,6 @@ export function SaveCollectionDialog({ open, defaultName, onOpenChange, onSave }
         </DialogHeader>
 
         <div className="space-y-4">
-          {/* 名称输入 */}
           <div className="space-y-1.5">
             <label className="text-sm font-medium">
               名称 <span className="text-destructive">*</span>
@@ -105,70 +113,75 @@ export function SaveCollectionDialog({ open, defaultName, onOpenChange, onSave }
             />
           </div>
 
-          {/* 保存至 */}
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
-              <span className="text-sm">
-                保存至 <span className="font-semibold">{currentFolderName}</span>
-              </span>
-              <div className="flex items-center gap-1">
-                {parentFolderId !== null && (
-                  <Button variant="ghost" size="icon" className="size-7" onClick={handleGoBack}>
-                    <ArrowLeft className="size-3.5" />
-                  </Button>
-                )}
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="size-7"
-                  onClick={() => {
-                    setCreatingFolder(true)
-                    setNewFolderName('')
-                  }}
-                >
-                  <FolderPlus className="size-3.5" />
-                </Button>
-              </div>
+              <span className="text-sm font-medium">保存位置</span>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-7"
+                onClick={() => handleStartCreate(selectedFolderId)}
+              >
+                <FolderPlus className="size-3.5" />
+              </Button>
             </div>
 
-            <ScrollArea className="h-[200px] rounded-md border">
-              <div className="p-2 space-y-0.5">
-                {/* 新建文件夹输入 */}
-                {creatingFolder && (
-                  <div className="flex items-center gap-2 px-2 py-1">
-                    <Folder className="size-4 shrink-0 text-muted-foreground" />
-                    <Input
-                      className="h-7 text-sm"
-                      value={newFolderName}
-                      onChange={(e) => setNewFolderName(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') handleCreateFolder()
-                        if (e.key === 'Escape') setCreatingFolder(false)
-                      }}
-                      onBlur={() => {
-                        if (!newFolderName.trim()) setCreatingFolder(false)
-                      }}
-                      placeholder="文件夹名称"
-                      autoFocus
-                    />
-                  </div>
+            <ScrollArea className="h-[240px] rounded-md border">
+              <div className="p-1">
+                {/* 根节点 */}
+                <ContextMenu>
+                  <ContextMenuTrigger asChild>
+                    <button
+                      onClick={() => setSelectedFolderId('')}
+                      className={cn(
+                        'flex items-center gap-2 w-full px-2 py-1.5 rounded-sm text-sm text-left',
+                        selectedFolderId === '' ? 'bg-accent text-accent-foreground' : 'hover:bg-accent/50'
+                      )}
+                    >
+                      <FolderOpen className="size-4 shrink-0 text-muted-foreground" />
+                      <span>本地</span>
+                    </button>
+                  </ContextMenuTrigger>
+                  <ContextMenuContent>
+                    <ContextMenuItem onClick={() => handleStartCreate('')}>
+                      <FolderPlus />
+                      <span>新建文件夹</span>
+                    </ContextMenuItem>
+                  </ContextMenuContent>
+                </ContextMenu>
+
+                {creatingInFolderId === '' && (
+                  <CreateFolderInput
+                    depth={1}
+                    value={newFolderName}
+                    onChange={setNewFolderName}
+                    onCreate={() => handleCreateFolder('')}
+                    onCancel={() => setCreatingInFolderId(null)}
+                  />
                 )}
 
-                {/* 子文件夹 */}
-                {childFolders.map((f) => (
-                  <FolderRow key={f.id} folder={f} onNavigate={setCurrentFolderId} />
+                {rootFolders.map((f) => (
+                  <FolderTreeNode
+                    key={f.id}
+                    folder={f}
+                    folders={folders}
+                    selectedFolderId={selectedFolderId}
+                    onSelect={setSelectedFolderId}
+                    depth={1}
+                    creatingInFolderId={creatingInFolderId}
+                    newFolderName={newFolderName}
+                    onNewFolderNameChange={setNewFolderName}
+                    onCreateFolder={handleCreateFolder}
+                    onCancelCreate={() => setCreatingInFolderId(null)}
+                    onStartCreate={handleStartCreate}
+                    renamingFolderId={renamingFolderId}
+                    renameFolderName={renameFolderName}
+                    onRenameFolderNameChange={setRenameFolderName}
+                    onStartRename={handleStartRename}
+                    onRenameConfirm={handleRenameConfirm}
+                    onCancelRename={() => setRenamingFolderId(null)}
+                  />
                 ))}
-
-                {/* 已保存的集合 */}
-                {childCollections.map((c) => (
-                  <CollectionRow key={c.id} collection={c} />
-                ))}
-
-                {!creatingFolder && childFolders.length === 0 && childCollections.length === 0 && (
-                  <div className="flex items-center justify-center h-20 text-xs text-muted-foreground">
-                    此文件夹为空
-                  </div>
-                )}
               </div>
             </ScrollArea>
           </div>
@@ -187,22 +200,196 @@ export function SaveCollectionDialog({ open, defaultName, onOpenChange, onSave }
   )
 }
 
-function FolderRow({ folder, onNavigate }: { folder: CollectionFolder; onNavigate: (id: string) => void }) {
+function FolderTreeNode({
+  folder,
+  folders,
+  selectedFolderId,
+  onSelect,
+  depth,
+  creatingInFolderId,
+  newFolderName,
+  onNewFolderNameChange,
+  onCreateFolder,
+  onCancelCreate,
+  onStartCreate,
+  renamingFolderId,
+  renameFolderName,
+  onRenameFolderNameChange,
+  onStartRename,
+  onRenameConfirm,
+  onCancelRename,
+}: {
+  folder: CollectionFolder
+  folders: CollectionFolder[]
+  selectedFolderId: string
+  onSelect: (id: string) => void
+  depth: number
+  creatingInFolderId: string | null
+  newFolderName: string
+  onNewFolderNameChange: (v: string) => void
+  onCreateFolder: (parentId: string) => void
+  onCancelCreate: () => void
+  onStartCreate: (parentId: string) => void
+  renamingFolderId: string | null
+  renameFolderName: string
+  onRenameFolderNameChange: (v: string) => void
+  onStartRename: (folderId: string) => void
+  onRenameConfirm: () => void
+  onCancelRename: () => void
+}) {
+  const [expanded, setExpanded] = useState(false)
+  const isSelected = selectedFolderId === folder.id
+  const isRenaming = renamingFolderId === folder.id
+  const children = folders.filter((f) => f.parentId === folder.id)
+  const hasChildren = children.length > 0 || creatingInFolderId === folder.id
+
+  const handleClick = () => {
+    onSelect(folder.id)
+    setExpanded((v) => !v)
+  }
+
   return (
-    <button
-      onClick={() => onNavigate(folder.id)}
-      className="flex items-center gap-2 w-full px-2 py-1.5 rounded-sm text-sm hover:bg-accent text-left"
-    >
-      <FolderOpen className="size-4 shrink-0 text-muted-foreground" />
-      <span className="truncate">{folder.name}</span>
-    </button>
+    <>
+      <ContextMenu>
+        <ContextMenuTrigger asChild>
+          {isRenaming ? (
+            <div
+              className="flex items-center gap-1 py-1"
+              style={{ paddingLeft: depth * 16 }}
+            >
+              <ChevronRight className="size-3.5 shrink-0 invisible" />
+              <Folder className="size-4 shrink-0 text-muted-foreground" />
+              <Input
+                className="h-7 text-sm flex-1"
+                value={renameFolderName}
+                onChange={(e) => onRenameFolderNameChange(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') onRenameConfirm()
+                  if (e.key === 'Escape') onCancelRename()
+                }}
+                onBlur={() => {
+                  if (renameFolderName.trim()) {
+                    onRenameConfirm()
+                  } else {
+                    onCancelRename()
+                  }
+                }}
+                autoFocus
+              />
+            </div>
+          ) : (
+            <button
+              onClick={handleClick}
+              className={cn(
+                'flex items-center gap-1 w-full py-1.5 rounded-sm text-sm text-left',
+                isSelected ? 'bg-accent text-accent-foreground' : 'hover:bg-accent/50'
+              )}
+              style={{ paddingLeft: depth * 16 }}
+            >
+              <ChevronRight
+                className={cn(
+                  'size-3.5 shrink-0 transition-transform text-muted-foreground',
+                  hasChildren ? '' : 'invisible',
+                  expanded ? 'rotate-90' : ''
+                )}
+              />
+              {isSelected ? (
+                <FolderOpen className="size-4 shrink-0 text-muted-foreground" />
+              ) : (
+                <Folder className="size-4 shrink-0 text-muted-foreground" />
+              )}
+              <span className="truncate">{folder.name}</span>
+            </button>
+          )}
+        </ContextMenuTrigger>
+        <ContextMenuContent>
+          <ContextMenuItem onClick={() => { setExpanded(true); onStartCreate(folder.id) }}>
+            <FolderPlus />
+            <span>新建文件夹</span>
+          </ContextMenuItem>
+          <ContextMenuItem onClick={() => onStartRename(folder.id)}>
+            <Pencil />
+            <span>重命名</span>
+          </ContextMenuItem>
+        </ContextMenuContent>
+      </ContextMenu>
+
+      {expanded && (
+        <>
+          {creatingInFolderId === folder.id && (
+            <CreateFolderInput
+              depth={depth + 1}
+              value={newFolderName}
+              onChange={onNewFolderNameChange}
+              onCreate={() => onCreateFolder(folder.id)}
+              onCancel={onCancelCreate}
+            />
+          )}
+          {children.map((child) => (
+            <FolderTreeNode
+              key={child.id}
+              folder={child}
+              folders={folders}
+              selectedFolderId={selectedFolderId}
+              onSelect={onSelect}
+              depth={depth + 1}
+              creatingInFolderId={creatingInFolderId}
+              newFolderName={newFolderName}
+              onNewFolderNameChange={onNewFolderNameChange}
+              onCreateFolder={onCreateFolder}
+              onCancelCreate={onCancelCreate}
+              onStartCreate={onStartCreate}
+              renamingFolderId={renamingFolderId}
+              renameFolderName={renameFolderName}
+              onRenameFolderNameChange={onRenameFolderNameChange}
+              onStartRename={onStartRename}
+              onRenameConfirm={onRenameConfirm}
+              onCancelRename={onCancelRename}
+            />
+          ))}
+        </>
+      )}
+    </>
   )
 }
 
-function CollectionRow({ collection }: { collection: Collection }) {
+function CreateFolderInput({
+  depth,
+  value,
+  onChange,
+  onCreate,
+  onCancel,
+}: {
+  depth: number
+  value: string
+  onChange: (v: string) => void
+  onCreate: () => void
+  onCancel: () => void
+}) {
   return (
-    <div className="flex items-center gap-2 px-2 py-1.5 text-sm text-muted-foreground">
-      <span className="truncate">{collection.name}</span>
+    <div
+      className="flex items-center gap-2 py-1"
+      style={{ paddingLeft: depth * 16 + 4 }}
+    >
+      <Folder className="size-4 shrink-0 text-muted-foreground" />
+      <Input
+        className="h-7 text-sm"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') onCreate()
+          if (e.key === 'Escape') onCancel()
+        }}
+        onBlur={() => {
+          if (value.trim()) {
+            onCreate()
+          } else {
+            onCancel()
+          }
+        }}
+        placeholder="文件夹名称"
+        autoFocus
+      />
     </div>
   )
 }
