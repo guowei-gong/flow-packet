@@ -50,6 +50,7 @@ interface SavedConnectionStore {
   updateConnection: (id: string, updates: Partial<Omit<SavedConnection, 'id' | 'createdAt'>>) => void
   deleteConnection: (id: string) => void
   getConnection: (id: string) => SavedConnection | undefined
+  reorderConnections: (oldIndex: number, newIndex: number) => void
 }
 
 export const useSavedConnectionStore = create<SavedConnectionStore>((set, get) => ({
@@ -91,5 +92,15 @@ export const useSavedConnectionStore = create<SavedConnectionStore>((set, get) =
 
   getConnection: (id) => {
     return get().connections.find((c) => c.id === id)
+  },
+
+  reorderConnections: (oldIndex, newIndex) => {
+    set((s) => {
+      const next = [...s.connections]
+      const [removed] = next.splice(oldIndex, 1)
+      next.splice(newIndex, 0, removed)
+      persistConnections(next)
+      return { connections: next }
+    })
   },
 }))

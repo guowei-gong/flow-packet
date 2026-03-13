@@ -1,10 +1,10 @@
-import { Play, Square, ArrowLeft } from 'lucide-react'
+import { Play, ArrowLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { ThemeToggle } from '@/components/layout/ThemeToggle'
 import { useConnectionStore } from '@/stores/connectionStore'
 import { useExecutionStore } from '@/stores/executionStore'
-import { executeFlow, stopFlow } from '@/services/api'
+import { executeFlow } from '@/services/api'
 import { useCanvasStore } from '@/stores/canvasStore'
 
 const stateColors: Record<string, string> = {
@@ -27,13 +27,11 @@ interface ToolbarProps {
 
 export function Toolbar({ onBack }: ToolbarProps) {
   const connState = useConnectionStore((s) => s.state)
-  const targetAddr = useConnectionStore((s) => s.targetAddr)
   const activeConnectionId = useConnectionStore((s) => s.activeConnectionId)
   const execStatus = useExecutionStore((s) => s.status)
   const nodes = useCanvasStore((s) => s.nodes)
   const edges = useCanvasStore((s) => s.edges)
 
-  const isRunning = execStatus === 'running'
   const isConnected = connState === 'connected'
 
   const handleRun = async () => {
@@ -54,14 +52,6 @@ export function Toolbar({ onBack }: ToolbarProps) {
     }
   }
 
-  const handleStop = async () => {
-    try {
-      await stopFlow()
-    } catch {
-      // ignore
-    }
-  }
-
   return (
     <div className="flex items-center gap-2 w-full">
       {onBack && (
@@ -74,9 +64,6 @@ export function Toolbar({ onBack }: ToolbarProps) {
           <ArrowLeft className="w-3.5 h-3.5" />
         </Button>
       )}
-      <span className="text-sm font-semibold text-foreground">
-        FlowPacket
-      </span>
 
       <div className="flex-1" />
 
@@ -84,22 +71,11 @@ export function Toolbar({ onBack }: ToolbarProps) {
         variant="ghost"
         size="sm"
         className="h-7 px-2 gap-1"
-        disabled={!isConnected || isRunning || nodes.length === 0}
+        disabled={!isConnected || execStatus === 'running' || nodes.length === 0}
         onClick={handleRun}
       >
         <Play className="w-3.5 h-3.5" style={{ color: 'var(--status-success)' }} />
         <span className="text-xs">运行</span>
-      </Button>
-
-      <Button
-        variant="ghost"
-        size="sm"
-        className="h-7 px-2 gap-1"
-        disabled={!isRunning}
-        onClick={handleStop}
-      >
-        <Square className="w-3.5 h-3.5" style={{ color: 'var(--status-error)' }} />
-        <span className="text-xs">停止</span>
       </Button>
 
       <div className="flex items-center gap-1.5">
@@ -109,9 +85,6 @@ export function Toolbar({ onBack }: ToolbarProps) {
         />
         <Badge variant="outline" className="h-5 text-[10px] px-1.5">
           {stateLabels[connState]}
-          {isConnected && targetAddr && (
-            <span className="ml-1 opacity-60">{targetAddr}</span>
-          )}
         </Badge>
       </div>
 

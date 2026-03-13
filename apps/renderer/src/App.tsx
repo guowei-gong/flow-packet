@@ -23,7 +23,7 @@ import { useProtoStore } from '@/stores/protoStore'
 import { useConnectionStore } from '@/stores/connectionStore'
 import { useCollectionStore } from '@/stores/collectionStore'
 import type { SavedConnection } from '@/stores/savedConnectionStore'
-import { ThemeToggle } from '@/components/layout/ThemeToggle'
+
 
 function App() {
   const [activeTab, setActiveTab] = useState<SidebarTab>('画布')
@@ -160,21 +160,8 @@ function App() {
   if (!activeConnectionId) {
     return (
       <>
-        <div className="flex h-svh flex-col w-full">
-          {/* 顶部工具栏 */}
-          <div
-            className="flex items-center h-10 px-3 shrink-0 border-b border-border"
-            style={{ background: 'var(--bg-toolbar)' }}
-          >
-            <span className="text-sm font-semibold text-foreground">FlowPacket</span>
-            <div className="flex-1" />
-            <ThemeToggle />
-          </div>
-
-          {/* 欢迎页面 */}
-          <div className="flex-1 min-h-0">
-            <WelcomePage onEnterConnection={handleEnterConnection} />
-          </div>
+        <div className="flex h-svh w-full">
+          <WelcomePage onEnterConnection={handleEnterConnection} />
         </div>
         <Toaster position="top-center" richColors />
       </>
@@ -208,11 +195,14 @@ function App() {
                     <FlowCanvas />
                   ) : (
                     <div
-                      className="flex items-center justify-center h-full text-muted-foreground text-sm"
+                      className="flex flex-col items-center justify-center h-full text-muted-foreground"
                       onDragOver={onEmptyDragOver}
                       onDrop={onEmptyDrop}
                     >
-                      点击 + 新建页签，或拖入消息
+                      <img src="/remind-2.png" alt="remind" className="size-32 -mb-7 object-contain" />
+                      <h3 className="scroll-m-20 text-2xl font-semibold tracking-tight">
+                        点击 + 新建页签，或拖入消息
+                      </h3>
                     </div>
                   )
                 }

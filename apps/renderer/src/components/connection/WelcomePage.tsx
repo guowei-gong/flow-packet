@@ -1,10 +1,41 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { toast } from 'sonner'
-import { Plus, Search, Plug, Pencil, Trash2 } from 'lucide-react'
+import {
+  Plug,
+  Plus,
+  Search,
+  Pencil,
+  Trash2,
+  GripVertical,
+} from 'lucide-react'
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  MouseSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core'
+import { restrictToVerticalAxis } from '@dnd-kit/modifiers'
+import {
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { ScrollArea } from '@/components/ui/scroll-area'
+import { Separator } from '@/components/ui/separator'
+import { SidebarTrigger } from '@/components/ui/sidebar'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableRow,
+} from '@/components/ui/table'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -16,9 +47,24 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import {
+  SidebarProvider,
+  Sidebar,
+  SidebarInset,
+  SidebarContent,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarGroup,
+  SidebarGroupContent,
+} from '@/components/ui/sidebar'
+import { ThemeToggle } from '@/components/layout/ThemeToggle'
+import {
   useSavedConnectionStore,
   type SavedConnection,
 } from '@/stores/savedConnectionStore'
+import { Squares } from '@/components/ui/squares'
+import { useTheme } from '@/hooks/use-theme'
 import { CreateConnectionDialog } from './CreateConnectionDialog'
 
 interface WelcomePageProps {
@@ -32,23 +78,143 @@ const tagColors: Record<string, string> = {
   '预发布': 'bg-purple-500/15 text-purple-600 dark:text-purple-400',
 }
 
+function DragHandle({ id }: { id: string }) {
+  const { attributes, listeners } = useSortable({ id })
+  return (
+    <Button
+      {...attributes}
+      {...listeners}
+      variant="ghost"
+      size="icon"
+      className="size-7 cursor-grab text-muted-foreground hover:bg-transparent active:cursor-grabbing"
+    >
+      <GripVertical className="size-3.5" />
+    </Button>
+  )
+}
+
+function SortableRow({
+  conn,
+  onEnter,
+  onEdit,
+  onDelete,
+}: {
+  conn: SavedConnection
+  onEnter: (conn: SavedConnection) => void
+  onEdit: (e: React.MouseEvent, conn: SavedConnection) => void
+  onDelete: (e: React.MouseEvent, conn: SavedConnection) => void
+}) {
+  const { transform, transition, setNodeRef, isDragging } = useSortable({
+    id: conn.id,
+  })
+
+  return (
+    <TableRow
+      ref={setNodeRef}
+      className="group cursor-pointer data-[dragging=true]:z-10 data-[dragging=true]:opacity-80"
+      data-dragging={isDragging}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+      }}
+      onDoubleClick={() => onEnter(conn)}
+    >
+      <TableCell className="w-8">
+        <DragHandle id={conn.id} />
+      </TableCell>
+      <TableCell>
+        <div
+          className="flex items-center justify-center size-8 rounded-md text-white text-xs font-bold"
+          style={{ backgroundColor: conn.color }}
+        >
+          {conn.name.charAt(0).toUpperCase()}
+        </div>
+      </TableCell>
+      <TableCell className="font-medium">
+        {conn.name}
+      </TableCell>
+      <TableCell>
+        <Badge
+          variant="secondary"
+          className={`text-[10px] px-1.5 py-0 h-4 border-0 ${tagColors[conn.tag] ?? ''}`}
+        >
+          {conn.tag}
+        </Badge>
+      </TableCell>
+      <TableCell className="text-muted-foreground">
+        {conn.host}:{conn.port}
+      </TableCell>
+      <TableCell>
+        <Badge variant="outline" className="uppercase text-muted-foreground">
+          {conn.protocol}
+        </Badge>
+      </TableCell>
+      <TableCell className="text-muted-foreground">
+        {conn.codec}
+      </TableCell>
+      <TableCell className="text-right">
+        <div className="flex items-center justify-end gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-7"
+            onClick={(e) => onEdit(e, conn)}
+          >
+            <Pencil className="size-3.5" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-7 text-destructive hover:text-destructive"
+            onClick={(e) => onDelete(e, conn)}
+          >
+            <Trash2 className="size-3.5" />
+          </Button>
+        </div>
+      </TableCell>
+    </TableRow>
+  )
+}
+
 export function WelcomePage({ onEnterConnection }: WelcomePageProps) {
   const connections = useSavedConnectionStore((s) => s.connections)
   const deleteConnection = useSavedConnectionStore((s) => s.deleteConnection)
+  const reorderConnections = useSavedConnectionStore((s) => s.reorderConnections)
+  const theme = useTheme((s) => s.theme)
 
   const [search, setSearch] = useState('')
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingConn, setEditingConn] = useState<SavedConnection | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<SavedConnection | null>(null)
 
-  const filteredConnections = connections.filter((c) => {
+  const filteredConnections = useMemo(() => {
     const q = search.toLowerCase()
-    return (
+    return connections.filter((c) =>
       c.name.toLowerCase().includes(q) ||
       c.host.toLowerCase().includes(q) ||
       c.tag.toLowerCase().includes(q)
     )
-  })
+  }, [connections, search])
+
+  const isFiltering = search.length > 0
+  const sortableIds = useMemo(() => filteredConnections.map((c) => c.id), [filteredConnections])
+
+  const sensors = useSensors(
+    useSensor(MouseSensor, {}),
+    useSensor(TouchSensor, {}),
+    useSensor(KeyboardSensor, {})
+  )
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event
+    if (!active || !over || active.id === over.id || isFiltering) return
+
+    const oldIndex = connections.findIndex((c) => c.id === active.id)
+    const newIndex = connections.findIndex((c) => c.id === over.id)
+    if (oldIndex !== -1 && newIndex !== -1) {
+      reorderConnections(oldIndex, newIndex)
+    }
+  }
 
   const handleEdit = (e: React.MouseEvent, conn: SavedConnection) => {
     e.stopPropagation()
@@ -76,151 +242,131 @@ export function WelcomePage({ onEnterConnection }: WelcomePageProps) {
   }
 
   return (
-    <div className="flex h-full w-full">
-      {/* 左侧品牌区域 */}
-      <div
-        className="flex flex-col w-[280px] shrink-0 border-r border-border p-6"
-        style={{ background: 'var(--bg-controller)' }}
-      >
-        <div className="flex-1">
-          {/* Logo & 品牌 */}
-          <div className="mb-8">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary/10">
-                <Plug className="w-5 h-5 text-primary" />
-              </div>
-              <div>
-                <h1 className="text-lg font-bold text-foreground">FlowPacket</h1>
-                <p className="text-[11px] text-muted-foreground">v0.1.0</p>
-              </div>
-            </div>
-            <p className="text-xs text-muted-foreground mt-3 leading-relaxed">
-              可视化游戏服务器协议测试平台
-            </p>
-          </div>
+    <SidebarProvider>
+      <Sidebar collapsible="offcanvas" variant="inset">
+        <SidebarHeader>
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                className="data-[slot=sidebar-menu-button]:p-1.5!"
+              >
+                <Plug className="size-5!" />
+                <span className="text-base font-semibold">FlowPacket</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarHeader>
+        <SidebarContent>
+          <SidebarGroup>
+            <SidebarGroupContent className="flex flex-col gap-2">
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    className="min-w-8 bg-primary text-primary-foreground duration-200 ease-linear hover:bg-primary/90 hover:text-primary-foreground active:bg-primary/90 active:text-primary-foreground"
+                    onClick={() => {
+                      setEditingConn(null)
+                      setDialogOpen(true)
+                    }}
+                  >
+                    <Plus className="size-4" />
+                    <span>创建连接</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        </SidebarContent>
+      </Sidebar>
 
-          {/* 操作按钮 */}
-          <div className="space-y-2">
-            <Button
-              variant="outline"
-              className="w-full justify-start h-9 px-3 text-sm gap-2 bg-transparent hover:bg-accent active:bg-accent/80"
-              onClick={() => {
-                setEditingConn(null)
-                setDialogOpen(true)
-              }}
-            >
-              <Plug className="w-4 h-4" />
-              创建连接
-            </Button>
-          </div>
-        </div>
-      </div>
+      <SidebarInset className="relative overflow-hidden">
+        {/* Squares 动画背景 */}
+        <Squares
+          className="absolute inset-0 w-full h-full z-10"
+          direction="diagonal"
+          speed={0.25}
+          borderColor={theme === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}
+          hoverFillColor={theme === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)'}
+          squareSize={40}
+        />
 
-      {/* 右侧连接列表 */}
-      <div className="flex-1 flex flex-col min-w-0" style={{ background: 'var(--bg-panel)' }}>
-        {/* 搜索栏 */}
-        <div className="flex items-center h-11 px-3 border-b border-border gap-2 shrink-0">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7 shrink-0"
-            onClick={() => {
-              setEditingConn(null)
-              setDialogOpen(true)
-            }}
-          >
-            <Plus className="w-4 h-4" />
-          </Button>
-          <div className="relative flex-1">
-            <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-            <Input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="搜索连接"
-              className="h-7 pl-7 text-xs bg-transparent border-0 shadow-none focus-visible:ring-0"
+        {/* Header */}
+        <header className="relative z-20 flex h-12 shrink-0 items-center gap-2 border-b bg-background/80 backdrop-blur-sm">
+          <div className="flex w-full items-center gap-2 px-4">
+            <SidebarTrigger className="-ml-1" />
+            <Separator
+              orientation="vertical"
+              className="mx-1 data-[orientation=vertical]:h-4"
             />
-          </div>
-        </div>
+            <h1 className="text-base font-medium">连接管理</h1>
 
-        {/* 连接列表 */}
-        <ScrollArea className="flex-1">
-          {filteredConnections.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full py-20 text-muted-foreground">
-              <Plug className="w-10 h-10 mb-3 opacity-30" />
-              <p className="text-sm">
-                {connections.length === 0
-                  ? '暂无连接，点击"创建连接"开始'
-                  : '没有匹配的连接'}
-              </p>
+            <div className="ml-auto flex items-center gap-2">
+              <div className="relative">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
+                <Input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="搜索连接..."
+                  className="h-8 w-[200px] pl-8 text-sm"
+                />
+              </div>
+              <ThemeToggle />
+            </div>
+          </div>
+        </header>
+
+        {/* Content */}
+        <div className="relative z-20 flex-1 overflow-auto p-4 lg:p-6">
+          {connections.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full">
+              <img src="/remind.png" alt="remind" className="size-32 -mb-9 object-contain" />
+              <h3 className="scroll-m-20 text-2xl font-semibold tracking-tight text-muted-foreground">
+                暂无连接，点击"创建连接"开始
+              </h3>
+            </div>
+          ) : filteredConnections.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
+              <Plug className="size-10 mb-3 opacity-30" />
+              <p className="text-sm">没有匹配的连接</p>
             </div>
           ) : (
-            <div className="p-1">
-              {filteredConnections.map((conn) => (
-                <div
-                  key={conn.id}
-                  className="group flex items-center gap-3 px-3 py-2.5 rounded-md cursor-pointer hover:bg-accent/50 transition-colors"
-                  onDoubleClick={() => onEnterConnection(conn)}
-                >
-                  {/* 颜色标识 + 首字母 */}
-                  <div
-                    className="flex items-center justify-center w-9 h-9 rounded-md text-white text-sm font-bold shrink-0"
-                    style={{ backgroundColor: conn.color }}
-                  >
-                    {conn.name.charAt(0).toUpperCase()}
-                  </div>
-
-                  {/* 连接信息 */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium text-foreground truncate">
-                        {conn.name}
-                      </span>
-                      <Badge
-                        variant="secondary"
-                        className={`text-[10px] px-1.5 py-0 h-4 border-0 ${tagColors[conn.tag] ?? ''}`}
-                      >
-                        {conn.tag}
-                      </Badge>
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                      {conn.host}:{conn.port}
-                    </p>
-                  </div>
-
-                  {/* 操作按钮（hover 显示） */}
-                  <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7"
-                      onClick={(e) => handleEdit(e, conn)}
+            <div className="overflow-hidden rounded-lg border bg-background/80 backdrop-blur-sm">
+              <DndContext
+                collisionDetection={closestCenter}
+                modifiers={[restrictToVerticalAxis]}
+                onDragEnd={handleDragEnd}
+                sensors={sensors}
+              >
+                <Table>
+                  <TableBody>
+                    <SortableContext
+                      items={sortableIds}
+                      strategy={verticalListSortingStrategy}
                     >
-                      <Pencil className="w-3.5 h-3.5" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7 text-destructive hover:text-destructive"
-                      onClick={(e) => handleDelete(e, conn)}
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
+                      {filteredConnections.map((conn) => (
+                        <SortableRow
+                          key={conn.id}
+                          conn={conn}
+                          onEnter={onEnterConnection}
+                          onEdit={handleEdit}
+                          onDelete={handleDelete}
+                        />
+                      ))}
+                    </SortableContext>
+                  </TableBody>
+                </Table>
+              </DndContext>
             </div>
           )}
-        </ScrollArea>
-      </div>
+        </div>
+      </SidebarInset>
 
-      {/* 创建/编辑连接弹窗 */}
+      {/* Dialogs */}
       <CreateConnectionDialog
         open={dialogOpen}
         onOpenChange={handleDialogClose}
         editConnection={editingConn}
       />
 
-      {/* 删除确认弹窗 */}
       <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -235,6 +381,6 @@ export function WelcomePage({ onEnterConnection }: WelcomePageProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </SidebarProvider>
   )
 }
