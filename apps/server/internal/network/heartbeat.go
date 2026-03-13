@@ -18,8 +18,8 @@ type HeartbeatConfig struct {
 func DefaultHeartbeatConfig() HeartbeatConfig {
 	return HeartbeatConfig{
 		Enable:   true,
-		Interval: 15 * time.Second,
-		Timeout:  45 * time.Second,
+		Interval: 10 * time.Second,
+		Timeout:  30 * time.Second,
 	}
 }
 
@@ -42,6 +42,16 @@ func NewHeartbeat(cfg HeartbeatConfig, packetCfg codec.PacketConfig) *Heartbeat 
 		cfg:       cfg,
 		packetCfg: packetCfg,
 	}
+}
+
+// SetEnable 设置是否启用心跳
+func (h *Heartbeat) SetEnable(enable bool) {
+	h.cfg.Enable = enable
+}
+
+// SetPacketConfig 动态更新协议帧配置
+func (h *Heartbeat) SetPacketConfig(cfg codec.PacketConfig) {
+	h.packetCfg = cfg
 }
 
 // OnSend 注册心跳发送函数

@@ -50,8 +50,17 @@ func main() {
 	appState := api.NewAppState(dataDir)
 	api.RegisterHandlers(srv, appState)
 
+	// 心跳模块
+	hb := network.NewHeartbeat(network.DefaultHeartbeatConfig(), packetCfg)
+	hb.OnSend(func(data []byte) error {
+		return activeClient.Send(data)
+	})
+	hb.OnTimeout(func() {
+		activeClient.Disconnect()
+	})
+
 	// 注册连接管理 handlers
-	registerConnHandlers(srv, tcpClient, wsClient, &activeClient, &packetCfg, runner)
+	registerConnHandlers(srv, tcpClient, wsClient, &activeClient, &packetCfg, runner, hb)
 
 	// 注册流程执行 handlers
 	registerFlowHandlers(srv, runner, appState)
@@ -65,6 +74,7 @@ func main() {
 			return
 		}
 		if pkt.IsHeartbeat() {
+			hb.Feed()
 			return
 		}
 		// 先精确匹配 seq; 若服务端不回传 seq(seq=0), 回退到匹配最早的等待请求
@@ -75,12 +85,14 @@ func main() {
 
 	// 连接状态推送
 	onConnect := func(conn network.Conn) {
+		hb.Start()
 		srv.Broadcast(api.ServerMessage{
 			Event:   "conn.status",
 			Payload: map[string]any{"state": "connected", "addr": conn.RemoteAddr().String()},
 		})
 	}
 	onDisconnect := func(conn network.Conn, err error) {
+		hb.Stop()
 		srv.Broadcast(api.ServerMessage{
 			Event:   "conn.status",
 			Payload: map[string]any{"state": "disconnected"},
@@ -113,7 +125,7 @@ func main() {
 	srv.Stop()
 }
 
-func registerConnHandlers(srv *api.Server, tcpClient *network.TCPClient, wsClient *network.WSClient, activeClient *network.Client, packetCfg *codec.PacketConfig, runner *engine.Runner) {
+func registerConnHandlers(srv *api.Server, tcpClient *network.TCPClient, wsClient *network.WSClient, activeClient *network.Client, packetCfg *codec.PacketConfig, runner *engine.Runner, hb *network.Heartbeat) {
 	srv.Handle("conn.connect", func(payload json.RawMessage) (any, error) {
 		var req struct {
 			Host        string `json:"host"`
@@ -198,8 +210,17 @@ func registerConnHandlers(srv *api.Server, tcpClient *network.TCPClient, wsClien
 			Multiplier:  2.0,
 		}
 
-		// 先断开当前活跃连接
+		// 先停止心跳并断开当前活跃连接
+		hb.Stop()
 		(*activeClient).Disconnect()
+
+		// 根据请求配置心跳
+		if req.Heartbeat {
+			hb.SetEnable(true)
+			hb.SetPacketConfig(*packetCfg)
+		} else {
+			hb.SetEnable(false)
+		}
 
 		// 根据 protocol 选择客户端
 		if req.Protocol == "ws" {
