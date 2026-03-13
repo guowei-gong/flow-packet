@@ -3,6 +3,7 @@ import { LayoutDashboard, Plus, X, ChevronLeft, ChevronRight } from 'lucide-reac
 import { useTabStore, type CanvasTab } from '@/stores/tabStore'
 import { useCanvasStore } from '@/stores/canvasStore'
 import { useCollectionStore } from '@/stores/collectionStore'
+import { useConnectionStore } from '@/stores/connectionStore'
 import { SaveCollectionDialog } from '@/components/collection/SaveCollectionDialog'
 import { cn } from '@/lib/utils'
 
@@ -14,6 +15,8 @@ export function CanvasTabs() {
   const closeTab = useTabStore((s) => s.closeTab)
   const markClean = useTabStore((s) => s.markClean)
   const setCollectionId = useTabStore((s) => s.setCollectionId)
+
+  const activeConnectionId = useConnectionStore((s) => s.activeConnectionId)
 
   const [closingTab, setClosingTab] = useState<CanvasTab | null>(null)
   const [saveDialogOpen, setSaveDialogOpen] = useState(false)
@@ -57,7 +60,7 @@ export function CanvasTabs() {
       if (tab.collectionId) {
         // 已保存过的集合, 直接覆盖保存并关闭
         const canvas = useCanvasStore.getState()
-        useCollectionStore.getState().updateCollection(tab.collectionId, canvas.nodes, canvas.edges)
+        useCollectionStore.getState().updateCollection(activeConnectionId!, tab.collectionId, canvas.nodes, canvas.edges)
         markClean(tab.id)
         closeTab(tab.id)
       } else {
@@ -73,7 +76,7 @@ export function CanvasTabs() {
     if (!closingTab) return
     const canvas = useCanvasStore.getState()
     const collectionId = await useCollectionStore.getState().saveCollection(
-      name, folderId, canvas.nodes, canvas.edges
+      activeConnectionId!, name, folderId, canvas.nodes, canvas.edges
     )
     setCollectionId(closingTab.id, collectionId)
     markClean(closingTab.id)

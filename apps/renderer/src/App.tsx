@@ -89,7 +89,7 @@ function App() {
       setConnectionStatusCallback((connected) => {
         if (connected) {
           console.log('[ws] connected to backend')
-          useCollectionStore.getState().loadCollections().catch(() => {})
+          // 集合数据在进入连接时加载, 此处不再全局加载
         }
       })
 
@@ -116,6 +116,10 @@ function App() {
     // 提取路由字段定义
     const routeFields = connection.frameConfig?.fields.filter((f) => f.isRoute) ?? []
     setRouteFields(routeFields)
+
+    // 重置画布 tab 并加载该连接的集合数据
+    useTabStore.getState().resetTabs()
+    useCollectionStore.getState().loadCollections(connection.id).catch(() => {})
 
     // 加载该连接的 proto 文件和路由映射
     getProtoList(connection.id).then((result: { files?: unknown[]; messages?: unknown[] }) => {
@@ -148,6 +152,8 @@ function App() {
     setMessages([])
     setRouteMappings([])
     setActiveConnectionId(null)
+    useTabStore.getState().resetTabs()
+    useCollectionStore.getState().clearCollections()
   }, [setFiles, setMessages, setRouteMappings, setActiveConnectionId])
 
   // 欢迎页面 - 无活跃连接时显示

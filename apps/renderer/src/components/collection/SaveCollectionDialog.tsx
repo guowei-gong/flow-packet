@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { useCollectionStore, type CollectionFolder, type Collection } from '@/stores/collectionStore'
+import { useConnectionStore } from '@/stores/connectionStore'
 
 interface SaveCollectionDialogProps {
   open: boolean
@@ -20,6 +21,7 @@ interface SaveCollectionDialogProps {
 }
 
 export function SaveCollectionDialog({ open, defaultName, onOpenChange, onSave }: SaveCollectionDialogProps) {
+  const activeConnectionId = useConnectionStore((s) => s.activeConnectionId)
   const folders = useCollectionStore((s) => s.folders)
   const collections = useCollectionStore((s) => s.collections)
   const createFolder = useCollectionStore((s) => s.createFolder)
@@ -70,7 +72,7 @@ export function SaveCollectionDialog({ open, defaultName, onOpenChange, onSave }
   const handleCreateFolder = async () => {
     const trimmed = newFolderName.trim()
     if (!trimmed) return
-    await createFolder(trimmed, currentFolderId)
+    await createFolder(activeConnectionId!, trimmed, currentFolderId)
     setCreatingFolder(false)
     setNewFolderName('')
   }

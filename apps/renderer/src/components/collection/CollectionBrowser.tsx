@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useRef } from 'react'
 import { Pencil, Trash2, Folder, FolderPlus, ChevronRight, LayoutDashboard } from 'lucide-react'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import {
@@ -30,6 +30,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useCollectionStore, type Collection, type CollectionFolder } from '@/stores/collectionStore'
+import { useConnectionStore } from '@/stores/connectionStore'
 import { useTabStore } from '@/stores/tabStore'
 
 type DragItem = { type: 'folder'; id: string } | { type: 'collection'; id: string }
@@ -37,9 +38,9 @@ type DragItem = { type: 'folder'; id: string } | { type: 'collection'; id: strin
 let dragItem: DragItem | null = null
 
 export function CollectionBrowser() {
+  const activeConnectionId = useConnectionStore((s) => s.activeConnectionId)
   const folders = useCollectionStore((s) => s.folders)
   const collections = useCollectionStore((s) => s.collections)
-  const loadCollections = useCollectionStore((s) => s.loadCollections)
   const createFolder = useCollectionStore((s) => s.createFolder)
   const moveFolder = useCollectionStore((s) => s.moveFolder)
   const moveCollection = useCollectionStore((s) => s.moveCollection)
@@ -47,25 +48,21 @@ export function CollectionBrowser() {
   const [creatingFolder, setCreatingFolder] = useState(false)
   const [newFolderName, setNewFolderName] = useState('')
 
-  useEffect(() => {
-    loadCollections()
-  }, [loadCollections])
-
   const handleCreateFolder = async () => {
     const name = newFolderName.trim()
-    if (!name) return
-    await createFolder(name, '')
+    if (!name || !activeConnectionId) return
+    await createFolder(activeConnectionId, name, '')
     setCreatingFolder(false)
     setNewFolderName('')
   }
 
   const handleDrop = (targetFolderId: string) => {
-    if (!dragItem) return
+    if (!dragItem || !activeConnectionId) return
     if (dragItem.type === 'folder') {
       if (dragItem.id === targetFolderId) return
-      moveFolder(dragItem.id, targetFolderId)
+      moveFolder(activeConnectionId, dragItem.id, targetFolderId)
     } else {
-      moveCollection(dragItem.id, targetFolderId)
+      moveCollection(activeConnectionId, dragItem.id, targetFolderId)
     }
     dragItem = null
   }
@@ -156,6 +153,7 @@ function FolderNode({
   collections: Collection[]
   onDrop: (targetFolderId: string) => void
 }) {
+  const activeConnectionId = useConnectionStore((s) => s.activeConnectionId)
   const renameFolder = useCollectionStore((s) => s.renameFolder)
   const deleteFolder = useCollectionStore((s) => s.deleteFolder)
   const createFolder = useCollectionStore((s) => s.createFolder)
@@ -178,15 +176,15 @@ function FolderNode({
 
   const handleRenameConfirm = () => {
     const name = renameName.trim()
-    if (!name) return
-    renameFolder(folder.id, name)
+    if (!name || !activeConnectionId) return
+    renameFolder(activeConnectionId, folder.id, name)
     setRenameOpen(false)
   }
 
   const handleCreateFolder = async () => {
     const name = newFolderName.trim()
-    if (!name) return
-    await createFolder(name, folder.id)
+    if (!name || !activeConnectionId) return
+    await createFolder(activeConnectionId, name, folder.id)
     setCreateOpen(false)
     setNewFolderName('')
   }
@@ -257,7 +255,7 @@ function FolderNode({
               <span>重命名</span>
             </ContextMenuItem>
             <ContextMenuSeparator />
-            <ContextMenuItem variant="destructive" onClick={() => deleteFolder(folder.id)}>
+            <ContextMenuItem variant="destructive" onClick={() => activeConnectionId && deleteFolder(activeConnectionId, folder.id)}>
               <Trash2 />
               <span>删除</span>
             </ContextMenuItem>
@@ -325,6 +323,7 @@ function FolderNode({
 }
 
 function CollectionNode({ collection }: { collection: Collection }) {
+  const activeConnectionId = useConnectionStore((s) => s.activeConnectionId)
   const renameCollection = useCollectionStore((s) => s.renameCollection)
   const deleteCollection = useCollectionStore((s) => s.deleteCollection)
   const openTab = useTabStore((s) => s.openTab)
@@ -343,13 +342,14 @@ function CollectionNode({ collection }: { collection: Collection }) {
 
   const handleRenameConfirm = () => {
     const name = renameName.trim()
-    if (!name) return
-    renameCollection(collection.id, name)
+    if (!name || !activeConnectionId) return
+    renameCollection(activeConnectionId, collection.id, name)
     setRenameOpen(false)
   }
 
   const handleDelete = () => {
-    deleteCollection(collection.id)
+    if (!activeConnectionId) return
+    deleteCollection(activeConnectionId, collection.id)
   }
 
   const handleDragStart = (e: React.DragEvent) => {

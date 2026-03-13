@@ -24,6 +24,7 @@ interface TabStore {
   setCollectionId: (tabId: string, collectionId: string) => void
   /** Sync current canvas state back into active tab (called before switch/close) */
   _saveActiveTab: () => void
+  resetTabs: () => void
 }
 
 function createDefaultTab(): CanvasTab {
@@ -114,6 +115,15 @@ export const useTabStore = create<TabStore>((set, get) => ({
     set({ activeTabId: tabId })
     useCanvasStore.getState().setNodes(target.nodes)
     useCanvasStore.getState().setEdges(target.edges)
+    _switching = false
+  },
+
+  resetTabs: () => {
+    const tab = createDefaultTab()
+    _switching = true
+    set({ tabs: [tab], activeTabId: tab.id })
+    useCanvasStore.getState().setNodes([])
+    useCanvasStore.getState().setEdges([])
     _switching = false
   },
 
