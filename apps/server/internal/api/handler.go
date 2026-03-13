@@ -19,6 +19,7 @@ import (
 type ConnState struct {
 	ProtoDir       string
 	CollectionFile string
+	RouteFile      string
 	ParseResult    *parser.ParseResult
 	RouteMappings  map[uint32]RouteMapping
 }
@@ -65,10 +66,19 @@ func (s *AppState) GetConnState(connID string) *ConnState {
 	protoDir := filepath.Join(connDir, "proto")
 	os.MkdirAll(protoDir, 0755)
 
+	routeFile := filepath.Join(connDir, "routes.json")
 	cs = &ConnState{
 		ProtoDir:       protoDir,
 		CollectionFile: filepath.Join(connDir, "collections.json"),
+		RouteFile:      routeFile,
 		RouteMappings:  make(map[uint32]RouteMapping),
+	}
+
+	// 加载已有路由映射
+	if routes, err := readRouteMappings(routeFile); err == nil {
+		for _, rm := range routes {
+			cs.RouteMappings[rm.Route] = rm
+		}
 	}
 
 	// 解析已有 proto 文件
@@ -324,6 +334,9 @@ func makeRouteSetHandler(state *AppState) HandlerFunc {
 		}
 
 		cs.RouteMappings[req.Route] = req.RouteMapping
+		if err := writeRouteMappings(cs.RouteFile, cs.RouteMappings); err != nil {
+			return nil, fmt.Errorf("failed to save routes: %w", err)
+		}
 		return map[string]string{"status": "ok"}, nil
 	}
 }
@@ -348,8 +361,40 @@ func makeRouteDeleteHandler(state *AppState) HandlerFunc {
 		}
 
 		delete(cs.RouteMappings, req.Route)
+		if err := writeRouteMappings(cs.RouteFile, cs.RouteMappings); err != nil {
+			return nil, fmt.Errorf("failed to save routes: %w", err)
+		}
 		return map[string]string{"status": "ok"}, nil
 	}
+}
+
+// readRouteMappings 从文件读取路由映射列表, 文件不存在时返回空列表
+func readRouteMappings(path string) ([]RouteMapping, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return []RouteMapping{}, nil
+		}
+		return nil, err
+	}
+	var routes []RouteMapping
+	if err := json.Unmarshal(data, &routes); err != nil {
+		return nil, err
+	}
+	return routes, nil
+}
+
+// writeRouteMappings 将路由映射写入文件
+func writeRouteMappings(path string, mappings map[uint32]RouteMapping) error {
+	routes := make([]RouteMapping, 0, len(mappings))
+	for _, rm := range mappings {
+		routes = append(routes, rm)
+	}
+	data, err := json.MarshalIndent(routes, "", "  ")
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(path, data, 0644)
 }
 
 // readTemplates 从文件读取模板列表, 文件不存在时返回空列表
