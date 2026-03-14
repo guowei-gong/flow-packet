@@ -24,6 +24,7 @@ type FieldDrivenConfig struct {
 	RouteFields []int // route 字段的索引列表
 	HeaderSize  int   // 所有 header 字段(不含 payload body)的总字节数
 	SizeBytes   int   // size 字段的字节数
+	BigEndian   bool  // true 时使用大端序, 默认小端序
 }
 
 // NewFieldDrivenConfig 根据字段定义构建配置, 自动检测 size/seq/route 字段索引
@@ -375,7 +376,24 @@ func combineRouteFromFields(values map[int]uint32, cfg *FieldDrivenConfig) uint3
 	return result
 }
 
-// fieldDrivenEncode 字段驱动编码(小端序)
+// putUintNFD 根据 BigEndian 标志选择字节序写入
+func (cfg *FieldDrivenConfig) putUintN(buf []byte, val uint32, n int) {
+	if cfg.BigEndian {
+		putUintN(buf, val, n)
+	} else {
+		putUintNLE(buf, val, n)
+	}
+}
+
+// readUintNFD 根据 BigEndian 标志选择字节序读取
+func (cfg *FieldDrivenConfig) readUintN(buf []byte, n int) uint32 {
+	if cfg.BigEndian {
+		return readUintN(buf, n)
+	}
+	return readUintNLE(buf, n)
+}
+
+// fieldDrivenEncode 字段驱动编码
 // 帧格式: header fields(按字段定义) + payload body
 // size 字段的值 = payload body 的字节数
 func fieldDrivenEncode(pkt *Packet, cfg *FieldDrivenConfig) ([]byte, error) {
@@ -394,7 +412,7 @@ func fieldDrivenEncode(pkt *Packet, cfg *FieldDrivenConfig) ([]byte, error) {
 		} else if f.IsSeq {
 			val = pkt.Seq
 		}
-		putUintNLE(buf[offset:], val, f.Bytes)
+		cfg.putUintN(buf[offset:], val, f.Bytes)
 		offset += f.Bytes
 	}
 
@@ -417,7 +435,7 @@ func fieldDrivenDecodeBytes(data []byte, cfg *FieldDrivenConfig) (*Packet, error
 
 	offset := 0
 	for i, f := range cfg.Fields {
-		val := readUintNLE(data[offset:], f.Bytes)
+		val := cfg.readUintN(data[offset:], f.Bytes)
 		if i == cfg.SizeIndex {
 			sizeValue = val
 		} else if f.IsRoute {
@@ -459,7 +477,7 @@ func (d *Decoder) decodeFieldDriven() (*Packet, error) {
 
 	offset := 0
 	for i, f := range cfg.Fields {
-		val := readUintNLE(headerBuf[offset:], f.Bytes)
+		val := cfg.readUintN(headerBuf[offset:], f.Bytes)
 		if i == cfg.SizeIndex {
 			sizeValue = val
 		} else if f.IsRoute {

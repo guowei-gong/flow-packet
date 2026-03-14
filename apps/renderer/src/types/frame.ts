@@ -111,7 +111,7 @@ export const FRAME_TEMPLATES: FrameTemplate[] = [
     name: 'Cherry',
     github: 'https://github.com/cherry-game/cherry',
     fields: [
-      { name: 'mid', bytes: 4 },
+      { name: 'mid', bytes: 4, isRoute: true },
       { name: 'len', bytes: 4 },
     ],
   },

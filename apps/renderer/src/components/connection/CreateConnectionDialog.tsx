@@ -436,7 +436,7 @@ export function CreateConnectionDialog({
               <div className="flex flex-col divide-y rounded-lg border">
                 {FRAME_TEMPLATES.map((tpl) => {
                   const selected = selectedTemplateId === tpl.id
-                  const available = tpl.id === 'due'
+                  const available = tpl.id === 'due' || tpl.id === 'cherry'
                   return (
                     <button
                       key={tpl.id}

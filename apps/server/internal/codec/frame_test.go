@@ -561,6 +561,110 @@ func TestFieldDrivenRouteSplitCombine(t *testing.T) {
 	}
 }
 
+// ---- Cherry Simple 协议测试(大端序字段驱动) ----
+
+// cherryFields 返回 Cherry Simple 协议帧字段定义
+// mid(4,route) + len(4)
+func cherryFields() []FieldDef {
+	return []FieldDef{
+		{Name: "mid", Bytes: 4, IsRoute: true},
+		{Name: "len", Bytes: 4},
+	}
+}
+
+func cherryConfig() PacketConfig {
+	fdCfg, err := NewFieldDrivenConfig(cherryFields())
+	if err != nil {
+		panic(err)
+	}
+	fdCfg.BigEndian = true
+	return PacketConfig{FieldDriven: fdCfg}
+}
+
+func TestCherryEncodeDecodeRoundTrip(t *testing.T) {
+	cfg := cherryConfig()
+	pkt := &Packet{
+		Route: 1001,
+		Data:  []byte{0xDE, 0xAD, 0xBE, 0xEF},
+	}
+
+	encoded, err := Encode(pkt, cfg)
+	if err != nil {
+		t.Fatalf("Encode error: %v", err)
+	}
+
+	decoded, err := DecodeBytes(encoded, cfg)
+	if err != nil {
+		t.Fatalf("DecodeBytes error: %v", err)
+	}
+
+	if decoded.Route != pkt.Route {
+		t.Fatalf("route = %d, want %d", decoded.Route, pkt.Route)
+	}
+	if !bytes.Equal(decoded.Data, pkt.Data) {
+		t.Fatalf("data = %x, want %x", decoded.Data, pkt.Data)
+	}
+}
+
+func TestCherryWireFormat(t *testing.T) {
+	cfg := cherryConfig()
+	pkt := &Packet{
+		Route: 1001,
+		Data:  []byte{0x01, 0x02, 0x03},
+	}
+
+	buf, err := Encode(pkt, cfg)
+	if err != nil {
+		t.Fatalf("Encode error: %v", err)
+	}
+
+	// header = 8 bytes (mid 4 + len 4), data = 3 bytes, total = 11
+	if len(buf) != 11 {
+		t.Fatalf("buf len = %d, want 11", len(buf))
+	}
+
+	// mid(4B BE) = 1001
+	midVal := binary.BigEndian.Uint32(buf[0:4])
+	if midVal != 1001 {
+		t.Fatalf("mid = %d, want 1001", midVal)
+	}
+
+	// len(4B BE) = 3
+	lenVal := binary.BigEndian.Uint32(buf[4:8])
+	if lenVal != 3 {
+		t.Fatalf("len = %d, want 3", lenVal)
+	}
+
+	// payload = [01 02 03]
+	if !bytes.Equal(buf[8:11], []byte{0x01, 0x02, 0x03}) {
+		t.Fatalf("data = %x, want 010203", buf[8:11])
+	}
+}
+
+func TestCherryStreamDecode(t *testing.T) {
+	cfg := cherryConfig()
+
+	pkt := &Packet{
+		Route: 1001,
+		Data:  []byte("hello"),
+	}
+
+	encoded, _ := Encode(pkt, cfg)
+	decoder := NewDecoder(bytes.NewReader(encoded), cfg)
+
+	decoded, err := decoder.Decode()
+	if err != nil {
+		t.Fatalf("Decode error: %v", err)
+	}
+
+	if decoded.Route != 1001 {
+		t.Fatalf("route = %d, want 1001", decoded.Route)
+	}
+	if !bytes.Equal(decoded.Data, []byte("hello")) {
+		t.Fatalf("data = %q, want %q", decoded.Data, "hello")
+	}
+}
+
 func TestLegacyDueUnaffected(t *testing.T) {
 	// 确认 legacy Due 模式在添加字段驱动后仍然正常工作
 	cfg := DefaultPacketConfig()

@@ -143,6 +143,7 @@ function App() {
       reconnect: true,
       heartbeat: true,
       frameFields: connection.frameConfig?.fields,
+      byteOrder: connection.frameConfig?.byteOrder,
     }).then(() => {
       toast.success('连接成功', {
         description: `已连接到 ${connection.host}:${connection.port}`,

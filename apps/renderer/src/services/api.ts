@@ -12,6 +12,7 @@ export async function connectTCP(host: string, port: number, options?: {
   reconnect?: boolean
   heartbeat?: boolean
   frameFields?: { name: string; bytes: number; isRoute?: boolean; isSeq?: boolean }[]
+  byteOrder?: 'big' | 'little'
 }) {
   return sendRequest('conn.connect', { host, port, ...options })
 }

@@ -134,6 +134,7 @@ func registerConnHandlers(srv *api.Server, tcpClient *network.TCPClient, wsClien
 			Timeout     int    `json:"timeout"`
 			Reconnect   bool   `json:"reconnect"`
 			Heartbeat   bool   `json:"heartbeat"`
+			ByteOrder   string `json:"byteOrder"`
 			FrameFields []struct {
 				Name    string `json:"name"`
 				Bytes   int    `json:"bytes"`
@@ -190,6 +191,7 @@ func registerConnHandlers(srv *api.Server, tcpClient *network.TCPClient, wsClien
 				if err != nil {
 					return nil, fmt.Errorf("invalid frame fields: %w", err)
 				}
+				fdCfg.BigEndian = req.ByteOrder == "big"
 				newCfg := codec.PacketConfig{
 					FieldDriven: fdCfg,
 				}
