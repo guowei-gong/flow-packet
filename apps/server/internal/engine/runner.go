@@ -3,6 +3,7 @@ package engine
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -116,6 +117,10 @@ func ResolveOrder(nodes []FlowNode, edges []FlowEdge) ([]string, error) {
 	outEdge := make(map[string]string) // source → target
 
 	for i := range nodes {
+		// 跳过注释节点等非执行节点
+		if strings.HasPrefix(nodes[i].ID, "comment") {
+			continue
+		}
 		nodeMap[nodes[i].ID] = &nodes[i]
 		inDegree[nodes[i].ID] = 0
 	}
@@ -154,8 +159,8 @@ func ResolveOrder(nodes []FlowNode, edges []FlowEdge) ([]string, error) {
 		current = outEdge[current]
 	}
 
-	if len(order) != len(nodes) {
-		return nil, fmt.Errorf("disconnected graph: resolved %d of %d nodes", len(order), len(nodes))
+	if len(order) != len(nodeMap) {
+		return nil, fmt.Errorf("disconnected graph: resolved %d of %d nodes", len(order), len(nodeMap))
 	}
 
 	return order, nil
