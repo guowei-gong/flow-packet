@@ -1,11 +1,13 @@
-import { Play, ArrowLeft } from 'lucide-react'
+import { Play, ArrowLeft, RotateCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { ThemeToggle } from '@/components/layout/ThemeToggle'
 import { useConnectionStore } from '@/stores/connectionStore'
 import { useExecutionStore } from '@/stores/executionStore'
-import { executeFlow } from '@/services/api'
+import { useSavedConnectionStore } from '@/stores/savedConnectionStore'
+import { executeFlow, connectTCP } from '@/services/api'
 import { useCanvasStore } from '@/stores/canvasStore'
+import { toast } from 'sonner'
 
 const stateColors: Record<string, string> = {
   disconnected: 'hsl(var(--muted-foreground))',
@@ -31,8 +33,40 @@ export function Toolbar({ onBack }: ToolbarProps) {
   const execStatus = useExecutionStore((s) => s.status)
   const nodes = useCanvasStore((s) => s.nodes)
   const edges = useCanvasStore((s) => s.edges)
+  const getConnection = useSavedConnectionStore((s) => s.getConnection)
 
   const isConnected = connState === 'connected'
+  const isDisconnected = connState === 'disconnected'
+
+  const handleReconnect = async () => {
+    if (!activeConnectionId) return
+    const connection = getConnection(activeConnectionId)
+    if (!connection) return
+
+    useConnectionStore.getState().setState('connecting')
+
+    const isDueProtocol = connection.frameConfig?.fields?.some(
+      (f) => f.name.toLowerCase() === 'header' && f.bytes === 1
+    ) ?? false
+
+    try {
+      await connectTCP(connection.host, connection.port, {
+        protocol: connection.protocol,
+        reconnect: true,
+        heartbeat: isDueProtocol,
+        frameFields: connection.frameConfig?.fields,
+        byteOrder: connection.frameConfig?.byteOrder,
+        parserMode: connection.frameConfig?.parserMode,
+      })
+      toast.success('重连成功', {
+        description: `已连接到 ${connection.host}:${connection.port}`,
+      })
+    } catch (err) {
+      toast.error('重连失败', {
+        description: err instanceof Error ? err.message : String(err),
+      })
+    }
+  }
 
   const handleRun = async () => {
     if (!isConnected || execStatus === 'running' || nodes.length === 0 || !activeConnectionId) return
@@ -86,6 +120,17 @@ export function Toolbar({ onBack }: ToolbarProps) {
         <Badge variant="outline" className="h-5 text-[10px] px-1.5">
           {stateLabels[connState]}
         </Badge>
+        {isDisconnected && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-5 w-5"
+            onClick={handleReconnect}
+            title="重新连接"
+          >
+            <RotateCw className="w-3 h-3" />
+          </Button>
+        )}
       </div>
 
       <ThemeToggle />

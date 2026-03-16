@@ -106,6 +106,9 @@ function App() {
   const setTargetAddr = useConnectionStore((s) => s.setTargetAddr)
 
   const handleEnterConnection = useCallback((connection: SavedConnection) => {
+    // 重置连接状态, 避免上一次连接的状态残留
+    useConnectionStore.getState().setState('disconnected')
+
     setConfig({
       host: connection.host,
       port: connection.port,
@@ -137,13 +140,19 @@ function App() {
       setRouteMappings((result.routes ?? []) as import('@/stores/protoStore').RouteMapping[])
     }).catch(() => {})
 
+    // 判断是否为 Due 协议 (存在 header 字段且 bytes 为 1), 仅 Due 协议启用内置心跳
+    const isDueProtocol = connection.frameConfig?.fields?.some(
+      (f) => f.name.toLowerCase() === 'header' && f.bytes === 1
+    ) ?? false
+
     // 自动建立连接, 成功时 toast 提示, 失败时 toast 提示但不阻塞进入画布
     connectTCP(connection.host, connection.port, {
       protocol: connection.protocol,
       reconnect: true,
-      heartbeat: true,
+      heartbeat: isDueProtocol,
       frameFields: connection.frameConfig?.fields,
       byteOrder: connection.frameConfig?.byteOrder,
+      parserMode: connection.frameConfig?.parserMode,
     }).then(() => {
       toast.success('连接成功', {
         description: `已连接到 ${connection.host}:${connection.port}`,
