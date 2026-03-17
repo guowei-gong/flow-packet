@@ -60,6 +60,7 @@ function App() {
         data: {
           messageName: message.Name,
           route: mapping?.route ?? 0,
+          stringRoute: mapping?.stringRoute,
           fields: {},
           responseFields: message.Fields?.map((f: { name: string; type: string }) => ({
             name: f.name,

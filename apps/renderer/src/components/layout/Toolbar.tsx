@@ -75,6 +75,7 @@ export function Toolbar({ onBack }: ToolbarProps) {
         id: n.id,
         messageName: n.data.messageName,
         route: n.data.route,
+        stringRoute: n.data.stringRoute,
         fields: n.data.fields,
       }))
       const flowEdges = edges
