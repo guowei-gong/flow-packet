@@ -32,7 +32,7 @@
     ],
     "win": {
       "target": "nsis",
-      "icon": null
+      "icon": "build/icon.ico"
     },
     "nsis": {
       "oneClick": false,

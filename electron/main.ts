@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain } from 'electron'
+import { app, BrowserWindow, ipcMain, shell } from 'electron'
 import { spawn, type ChildProcess } from 'child_process'
 import path from 'path'
 
@@ -123,6 +123,19 @@ async function createWindow() {
   } else {
     mainWindow.loadFile(path.join(__dirname, '../dist/index.html'))
   }
+
+  // 外部链接使用系统浏览器打开
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    shell.openExternal(url)
+    return { action: 'deny' }
+  })
+
+  mainWindow.webContents.on('will-navigate', (event, url) => {
+    if (!url.startsWith('file://')) {
+      event.preventDefault()
+      shell.openExternal(url)
+    }
+  })
 
   mainWindow.on('closed', () => {
     mainWindow = null
