@@ -2,6 +2,9 @@ import { app, BrowserWindow, ipcMain, shell } from 'electron'
 import { spawn, type ChildProcess } from 'child_process'
 import path from 'path'
 
+// 禁用 GPU 硬件加速，修复 Windows 无边框窗口下画布拖拽和连线的渲染残影问题
+app.disableHardwareAcceleration()
+
 let mainWindow: BrowserWindow | null = null
 let goProcess: ChildProcess | null = null
 let backendPort: number | null = null
