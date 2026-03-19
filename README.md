@@ -1,99 +1,101 @@
 # FlowPacket
 
-一款自定义协议帧的画布测试工具，支持多种网络协议和编码方式。
+English | [中文](./README_CN.md)
 
-## 🤔 为什么需要 FlowPacket
+A canvas-based testing tool for custom protocol frames, supporting multiple network protocols and encoding formats.
 
-游戏服的特性，导致使用常见的测试工具时存在一些障碍：
+## 🤔 Why FlowPacket
 
-- **自定义长连接协议**
+The nature of game servers makes common testing tools impractical:
 
-  为了让玩家获得更好的游戏体验，游戏服通常采用 TCP、WebSocket、KCP 等长连接通信。大多数 API 测试工具围绕 HTTP 设计，无法直接对接这些协议和自定义的二进制协议帧
+- **Custom Long-Connection Protocols**
 
-- **测试用例难以管理**
+  To deliver a better gaming experience, game servers typically communicate over long-lived connections such as TCP, WebSocket, and KCP. Most API testing tools are built around HTTP and cannot interface with these protocols or custom binary frames
 
-  以往测试通常是手写一个 `Client.go`，在里面编写发送和监听逻辑。随着测试场景越来越多，文件不断膨胀，需要频繁地新增函数、注释掉暂时不用的用例，再取消注释来切换测试目标。而游戏业务往往是多步骤且有序的（如先创建角色，再进入游戏），每次只想验证流程中的某几步时，就得反复注释和恢复前置步骤——管理成本远大于编写成本
+- **Test Cases Are Hard to Manage**
 
-- **Proto 编码支持缺失**
+  Traditionally, testing means writing a `Client.go` with handcrafted send/receive logic. As test scenarios grow, the file bloats — you constantly add new functions, comment out unused cases, and uncomment them to switch targets. Game workflows are often multi-step and sequential (e.g., create a character, then enter the game), so verifying just a few steps requires repeatedly commenting and restoring prerequisites — the management overhead far exceeds the writing effort
 
-  游戏服普遍使用 Protobuf 作为序列化方案，但常见的 API 测试工具对 Proto 编码的支持非常有限，往往需要额外的插件或手动转换，流程繁琐
+- **Lack of Proto Encoding Support**
 
-- **需要面向网关获取真实结果**
+  Game servers widely use Protobuf for serialization, yet few API testing tools offer native Proto support. Extra plugins or manual conversion make the workflow cumbersome
 
-  游戏服不仅需要测试请求-响应的业务逻辑，还需要验证服务端主动推送的通知是否正常。这些通知能力由网关提供，如果直接连接游戏节点，只能拿到一对一的响应，无法验证通知推送是否正确到达
+- **Need to Test Through the Gateway**
 
-FlowPacket 通过**可视化画布**解决以上问题——将协议消息建模为节点，用连线定义执行顺序，所见即所得地编排和运行完整的基本测试流程。
+  Game servers need to test not only request-response logic but also server-initiated push notifications. These notification capabilities are provided by the gateway — connecting directly to a game node only yields one-to-one responses and cannot verify whether push notifications are delivered correctly
 
-## 👀 预览
+FlowPacket solves these problems with a **visual canvas** — model protocol messages as nodes, define execution order with connections, and run complete test flows in a WYSIWYG manner.
 
-![运行结果](./docs/image/review.png)
+## 👀 Preview
+
+![Preview](./docs/image/review.png)
 
 
 <details>
-<summary>自定义协议帧</summary>
+<summary>Custom Protocol Frame</summary>
 
-![自定义协议帧](./docs/image/custom_head_frame.png)
+![Custom Protocol Frame](./docs/image/custom_head_frame.png)
 </details>
 
 <details>
-<summary>模板可复用</summary>
+<summary>Reusable Templates</summary>
 
-![模板可复用](./docs/image/head_frame.png)
+![Reusable Templates](./docs/image/head_frame.png)
 </details>
 
 <details>
-<summary>保存画布</summary>
+<summary>Save Canvas</summary>
 
-![保存画布](./docs/image/save-canve.png)
+![Save Canvas](./docs/image/save-canve.png)
 </details>
 
 <details>
-<summary>自定义请求参数</summary>
+<summary>Custom Request Parameters</summary>
 
-![自定义请求参数](./docs/image/input_params.png)
+![Custom Request Parameters](./docs/image/input_params.png)
 </details>
 
-## ✨ 核心功能
+## ✨ Key Features
 
-- 支持自定义头协议帧
-- 画布拖拽构建测试用例
-- 支持导入并解析 Proto
-- 支持 Proto/Json 编解码
-- 支持 TCP/Websocket 长连接
-- 支持常见的游戏开源框架 Cherry/Due/Pomelo 协议帧
+- Custom header protocol frames
+- Drag-and-drop canvas to build test cases
+- Import and parse Proto files
+- Proto / JSON encoding and decoding
+- TCP / WebSocket long connections
+- Built-in support for popular game frameworks: Cherry / Due / Pomelo protocol frames
 
-## 🚀 快速开始
+## 🚀 Getting Started
 
-请到发布页面下载对应的安装包：[Release page](https://github.com/guowei-gong/flow-packet/releases)
+Download the installer from the release page: [Release page](https://github.com/guowei-gong/flow-packet/releases)
 
-## 🔨 从源码构建
+## 🔨 Build from Source
 
 ```bash
-# 前置依赖：Node.js 18+, Go 1.21+
+# Prerequisites: Node.js 18+, Go 1.21+
 
-# 安装前端依赖
+# Install frontend dependencies
 cd apps/renderer && npm install
 
-# 开发模式
+# Development mode
 npm run dev
 
-# 运行后端
+# Run backend
 cd apps/server/cmd/flow-packet/main.go
 ```
 
-## 🛠 技术栈
+## 🛠 Tech Stack
 
-| 层  | 技术                 |
-|----|--------------------|
-| 前端 | React + TypeScript |
-| 画布 | React Flow         |
-| 桌面 | Electron           |
-| 后端 | Go                 |
+| Layer    | Technology         |
+|----------|--------------------|
+| Frontend | React + TypeScript |
+| Canvas   | React Flow         |
+| Desktop  | Electron           |
+| Backend  | Go                 |
 
-## 👋 交流与讨论
+## 👋 Contact
 
-个人微信：ggw1315
+WeChat: ggw1315
 
-## 🍉 其他
+## 🍉 Acknowledgments
 
-- 感谢 [LINUX DO](https://linux.do/) 社区的 `开源自荐` 模块让更多朋友了解 FlowPacet 工具
+- Thanks to the [LINUX DO](https://linux.do/) community's open-source showcase for helping more people discover FlowPacket
