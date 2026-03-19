@@ -93,3 +93,7 @@ cd apps/server/cmd/flow-packet/main.go
 ## 👋 交流与讨论
 
 个人微信：ggw1315
+
+## 🍉 其他
+
+- 感谢 [LINUX DO](https://linux.do/) 社区的 `开源自荐` 模块让更多朋友了解 FlowPacet 工具
