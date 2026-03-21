@@ -117,7 +117,7 @@ export function CreateConnectionDialog({
   const [host, setHost] = useState('')
   const [port, setPort] = useState<number | ''>('')
   const [protocol, setProtocol] = useState<'tcp' | 'ws'>('tcp')
-  const [codec, setCodec] = useState<'protobuf'>('protobuf')
+  const [codec, setCodec] = useState<'protobuf' | 'thrift'>('protobuf')
   const [color, setColor] = useState<string>(COLOR_OPTIONS[0])
   const [testing, setTesting] = useState(false)
   const [showSaveTemplate, setShowSaveTemplate] = useState(false)
@@ -755,9 +755,27 @@ export function CreateConnectionDialog({
                   <div className="flex items-center gap-1 rounded-lg border p-1">
                     <button
                       type="button"
-                      className="flex-1 rounded-md px-3 py-1.5 text-sm font-medium transition-colors bg-primary text-primary-foreground"
+                      onClick={() => setCodec('protobuf')}
+                      className={cn(
+                        'flex-1 rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
+                        codec === 'protobuf'
+                          ? 'bg-primary text-primary-foreground'
+                          : 'text-muted-foreground hover:text-foreground'
+                      )}
                     >
                       Protobuf
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCodec('thrift')}
+                      className={cn(
+                        'flex-1 rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
+                        codec === 'thrift'
+                          ? 'bg-primary text-primary-foreground'
+                          : 'text-muted-foreground hover:text-foreground'
+                      )}
+                    >
+                      Thrift
                     </button>
                     <button
                       type="button"

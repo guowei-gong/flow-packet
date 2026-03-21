@@ -8,7 +8,7 @@ export interface SavedConnection {
   host: string
   port: number
   protocol: 'tcp' | 'ws'
-  codec: 'protobuf'
+  codec: 'protobuf' | 'thrift'
   color: string
   frameConfig?: FrameConfig
   createdAt: number
